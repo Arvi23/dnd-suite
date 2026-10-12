@@ -9879,7 +9879,7 @@ function rollDice(expr,crit){
 }
 
 // ---------------- state ----------------
-const DEF_SETTINGS={enforce:false,confirmClaims:true,turnTimer:0,timerMode:'warn',showMonsterHp:false,autoReveal:false,visionFt:0,areaRule:'circle',hint:{mode:'pct',pct:{damaged:100,heavy:50,critical:25}}};
+const DEF_SETTINGS={enforce:false,confirmClaims:true,turnTimer:0,timerMode:'warn',showMonsterHp:false,autoReveal:false,visionFt:0,areaRule:'circle',playerInit:true,hint:{mode:'pct',pct:{damaged:100,heavy:50,critical:25}}};
 // what players are told about a creature's health (they only ever see exact HP/AC for what they control)
 const HINTS={unhurt:{label:'Unhurt',w:100,col:'#7fc97f'},damaged:{label:'Damaged',w:70,col:'#c9a84c'},heavy:{label:'Heavily damaged',w:40,col:'#e0904c'},critical:{label:'Critical condition',w:15,col:'#e05252'},down:{label:'Down',w:0,col:'#7a2a2a'},unknown:{label:'',w:100,col:'#6a5a3a'}};
 function hintCfg(c){ const g=S.settings.hint||DEF_SETTINGS.hint, own=c.hint||{}; const mode=own.mode&&own.mode!=='default'?own.mode:g.mode;
@@ -9968,7 +9968,8 @@ function permit(it,actor){
   if(DM_ONLY.has(it.t)) return 'Only the DM can do that';
   const c=cById(it.cid); if(!c) return 'No such combatant';
   if(!controls(actor,c)) return 'You don’t control '+c.name;
-  if(it.t==='cond'||it.t==='conc'||it.t==='hpSelf'||it.t==='temp'||it.t==='death') return '';     // bookkeeping on your own character
+  if(it.t==='initSelf'){ const c2=cById(it.cid); return S.started&&c2&&hasInit(c2)?'Initiative is already set':''; }
+  if(it.t==='lightSelf'||it.t==='cond'||it.t==='conc'||it.t==='hpSelf'||it.t==='temp'||it.t==='death') return '';     // bookkeeping on your own character
   if(!S.started) return '';                                   // out of combat: free roam
   if(!S.settings.enforce) return '';                          // tracked, not enforced
   const reaction=(it.as==='reaction');
@@ -9987,6 +9988,7 @@ const Host={
     const why=permit(it,actor);
     if(why) return {ok:false,why};
     try{ resolve(it,actor); }catch(err){ if(err.constructor!==Error){ console.error(err); return {ok:false,why:'Bug: '+err.message}; } return {ok:false,why:err.message}; }
+    STATE_VER++;
     if(S.settings.autoReveal&&it.t!=='fogPaint') revealVision();
     commit(); return {ok:true};
   },
@@ -9994,13 +9996,14 @@ const Host={
   quiet(it,actor){
     const why=permit(it,actor); if(why) return {ok:false,why};
     try{ resolve(it,actor); }catch(err){ return {ok:false,why:err.message}; }
-    return {ok:true};
+    STATE_VER++; return {ok:true};
   }
 };
 function send(it){
   if(NET.mode==='client'){ if(!NETX.ws||NETX.ws.readyState!==1){ toast('Not connected to the table'); return {ok:false,why:'offline'}; } wsSend({t:'intent',it}); return {ok:true}; }
   const r=Host.handle(it,UI.viewAs); if(!r.ok) toast(r.why); return r; }
-function commit(){ if(PREP) PREP.dirty=true; save(); render(); if(!PREP) NET.broadcast(); }
+let STATE_VER=0;   // bumps on every change; lets light/vision maps be computed once per change
+function commit(){ STATE_VER++; if(PREP) PREP.dirty=true; save(); render(); if(!PREP) NET.broadcast(); }
 
 // ---------------- the redacted view a player receives ----------------
 function redact(src,seatId){
@@ -10018,6 +10021,8 @@ function redact(src,seatId){
     if(V.settings.showMonsterHp){ keep.hp=c.hp; keep.maxHp=c.maxHp; }
     return keep;
   });
+  if(V.grid.on&&lightOn()){ const vis=partyVision(); V.vis=[...vis];
+    V.combatants=V.combatants.filter(c=>mine(c)||teamOf(c)==='party'||!c.pos||footprint(c).some(k=>vis.has(k))); }
   // turn pointer stays meaningful after hidden combatants are dropped
   const cur=src.started?src.combatants[src.turn]:null;
   V.turn=cur?Math.max(0,V.combatants.findIndex(c=>c.id===cur.id)):0;
@@ -10079,6 +10084,8 @@ function normCmb(c){
   if(!c.v2){ if(c.init===0) c.init=null; c.v2=1; }
   if(!c.attacksPerAction) c.attacksPerAction=multiattackCount(c);
   if(c.icon===undefined&&c.kind!=='pc') c.icon=iconFor(c.name);
+  if(c.dv===undefined) c.dv=c.kind==='pc'?dvForRace(c.race):sensesFt(c.senses,'darkvision');
+  if(c.blind===undefined) c.blind=c.kind==='pc'?0:sensesFt(c.senses,'blindsight');
   return c;
 }
 function multiattackCount(c){
@@ -10342,6 +10349,7 @@ function advFor(att,tgt,ranged,dist){
     if((tgt.effects||[]).some(e=>/^Outlined|^Guided/.test(e.name))) add(1,'target outlined');
   }
   if(ranged&&dist!=null&&dist<=5&&S.grid.on&&enemyAdjacent(att)) add(-1,'ranged in melee');
+  if(tgt&&lightOn()){ if(!hasCond(tgt,'Invisible')&&!canSee(att,tgt)) add(-1,'can’t see the target (darkness)'); if(!hasCond(att,'Invisible')&&!canSee(tgt,att)) add(1,'target can’t see the attacker'); }
   return {n:Math.sign(a),why};
 }
 function d20(adv){ const a=d(20),b=d(20); return adv>0?{r:Math.max(a,b),txt:'['+a+','+b+'↑]'}:adv<0?{r:Math.min(a,b),txt:'['+a+','+b+'↓]'}:{r:a,txt:'['+a+']'}; }
@@ -10442,7 +10450,12 @@ function resolve(it,actor){
     if(!S.combatants.length){ S.started=false; S.round=0; S.turn=0; }
     S.seats.forEach(s=>s.controls=s.controls.filter(x=>x!==it.cid)); if(UI.selected===it.cid) UI.selected=null; break; }
   case 'clear': S.combatants=[]; S.round=0; S.turn=0; S.started=false; S.requests=[]; S.seats.forEach(s=>s.controls=[]); log('Encounter cleared'); break;
-  case 'initRoll': { const list=S.combatants.filter(x=>it.onlyBlank?!hasInit(x):true); list.forEach(x=>x.init=d(20)+(x.initMod||0)); sortInit(); log('Initiative rolled for '+list.length); break; }
+  case 'initRoll': { const byPlayer=x=>S.settings.playerInit&&S.seats.some(s=>controls(s.id,x)&&teamOf(x)==='party'); const list=S.combatants.filter(x=>(it.onlyBlank?!hasInit(x):true)&&!(byPlayer(x)&&!hasInit(x))); list.forEach(x=>x.init=d(20)+(x.initMod||0)); sortInit(); log('Initiative rolled for '+list.length); break; }
+  case 'initSelf': { if(!c) break; let v,txt;
+    if(it.value!=null&&it.value!==''){ v=Math.max(-10,Math.min(50,parseInt(it.value,10)||0)); txt='enters <b>'+v+'</b> (rolled at the table)'; }
+    else { const r=d(20), m=c.initMod||0; v=r+m; txt='rolls d20['+r+']'+fm(m)+' = <b>'+v+'</b>'; }
+    c.init=v; sortInit(); log(esc(c.name)+' · initiative '+txt); break; }
+  case 'lightSelf': if(c){ c.light=c.light?null:{bright:20,dim:20}; log(esc(c.name)+(c.light?' lights a torch':' puts out their light')); } break;
   case 'initSet': it.rolls.forEach(r=>{ const x=cById(r.id); if(x) x.init=r.init; }); sortInit(); break;
   case 'sortInit': sortInit(); break;
   case 'startCombat':
@@ -10796,7 +10809,8 @@ const TILE_TYPES={
   difficult:{label:'Difficult',fill:'#6b5b2e',difficult:true},
   water:{label:'Water',fill:'#245a7a',difficult:true},
   pit:{label:'Pit',fill:'#111',blockMove:true,blockSight:false},
-  start:{label:'Party start',fill:'#5aa0d8',start:true}
+  start:{label:'Party start',fill:'#5aa0d8',start:true},
+  light:{label:'Light source',fill:'#f0b040',lightSrc:true}
 };
 function tileInfo(tl){ if(!tl) return null; const T=TILE_TYPES[tl.t]||TILE_TYPES.wall; return T; }
 function blocksMove(tl){ if(!tl) return false; const T=tileInfo(tl); if(T.door) return !(tl.open||tl.broken); if(tl.broken) return false; return !!T.blockMove; }
@@ -10916,16 +10930,9 @@ function templateCells(c,spec,aim){
 // fog of war lifts wherever the party has line of sight (walls and closed doors block it); what's seen stays revealed
 function revealVision(){
   if(!S.grid.on||PREP) return false;
-  const fog=S.grid.fog||{}, keys=Object.keys(fog); if(!keys.length) return false;
-  const eyes=S.combatants.filter(c=>c.pos&&teamOf(c)==='party'&&!c.hidden&&c.hp>0&&!hasCond(c,'Blinded')&&!hasCond(c,'Unconscious'));
-  if(!eyes.length) return false;
-  const rng=(+S.settings.visionFt||0)/5; let changed=false;
-  const E=eyes.map(c=>({c,cc:centerOf(c),s:sizeCells(c),own:footprint(c)}));
-  keys.forEach(k=>{ const [x,y]=k.split(',').map(Number), p={x:x+.5,y:y+.5};
-    for(const e of E){
-      if(rng&&Math.max(Math.abs(p.x-e.cc.x),Math.abs(p.y-e.cc.y))-e.s/2>rng) continue;
-      const skip=new Set(e.own); skip.add(k);
-      if(sightClear(e.cc,p,skip)){ delete fog[k]; changed=true; break; } } });
+  const fog=S.grid.fog||{}; if(!Object.keys(fog).length) return false;
+  const vis=visibleSet(partyEyes(),lightOn()?lightMap():null); let changed=false;   // darkness keeps its secrets unless lit or within darkvision
+  vis.forEach(k=>{ if(fog[k]){ delete fog[k]; changed=true; } });
   return changed;
 }
 function areaTargets(c,meta,aim){
@@ -10949,6 +10956,7 @@ function gridSvg(V,actor){
   // tiles
   Object.keys(G.tiles).forEach(k=>{ const tl=G.tiles[k], T=tileInfo(tl); const [x,y]=k.split(',').map(Number);
     const broken=tl.broken, op=tl.open;
+    if(T.lightSrc) return;
     if(T.start){ if(dm) h+='<rect x="'+(x*cs+3)+'" y="'+(y*cs+3)+'" width="'+(cs-6)+'" height="'+(cs-6)+'" rx="4" fill="rgba(90,160,216,.15)" stroke="#5aa0d8" stroke-width="2" stroke-dasharray="5 3"/><text x="'+(x*cs+cs/2)+'" y="'+(y*cs+cs/2+5)+'" text-anchor="middle" font-size="14" fill="#5aa0d8">▶</text>'; return; }
     const tx='url(#tx-'+(TILE_TYPES[tl.t]?tl.t:'wall')+')';
     if(T.door) h+='<rect x="'+(x*cs+cs*.08)+'" y="'+(y*cs+cs*.08)+'" width="'+cs*.84+'" height="'+cs*.84+'" rx="3" fill="'+tx+'" opacity="'+(op||broken?.35:1)+'" stroke="'+TH.edge+'" stroke-width="'+(op?1:2.5)+'" stroke-dasharray="'+(broken?'4 3':op?'3 3':'')+'"/>'+(op&&!broken?'<text x="'+(x*cs+cs/2)+'" y="'+(y*cs+cs/2+4)+'" text-anchor="middle" font-size="11" fill="'+TH.edge+'" font-family="Georgia">open</text>':'');
@@ -10989,9 +10997,18 @@ function gridSvg(V,actor){
     if(c.hp==null&&c.status&&HINTS[c.status]&&c.status!=='unknown'){ const H=HINTS[c.status], circ=2*Math.PI*(r-4); h+='<circle cx="'+cx+'" cy="'+cy+'" r="'+(r-4)+'" fill="none" stroke="'+H.col+'" stroke-width="3" stroke-dasharray="'+(circ*H.w/100)+' '+circ+'" transform="rotate(-90 '+cx+' '+cy+')" opacity=".85"/>'; }
     if(c.hp!=null&&c.maxHp){ const frac=Math.max(0,Math.min(1,c.hp/c.maxHp)), circ=2*Math.PI*(r-4); h+='<circle cx="'+cx+'" cy="'+cy+'" r="'+(r-4)+'" fill="none" stroke="'+(frac>.5?'#7fc97f':frac>.25?'#e0b050':'#e05252')+'" stroke-width="3" stroke-dasharray="'+(circ*frac)+' '+circ+'" transform="rotate(-90 '+cx+' '+cy+')" opacity=".85"/>'; }
     const num=/\s(\d+)$/.exec(c.name||''); if(num&&(img||ic)) h+='<circle cx="'+(cx+r*.68)+'" cy="'+(cy+r*.68)+'" r="'+Math.max(7,r*.3)+'" fill="#120e08" stroke="'+col+'" stroke-width="1.5"/><text x="'+(cx+r*.68)+'" y="'+(cy+r*.68+Math.max(3.5,r*.13))+'" text-anchor="middle" font-size="'+Math.max(9,r*.36)+'" font-family="Georgia" font-weight="700" fill="#e8d5a0" pointer-events="none">'+num[1]+'</text>';
+    if(c.light) h+='<text x="'+(x+8)+'" y="'+(y+13)+'" font-size="12" pointer-events="none">🔥</text>';
     if((c.conditions||[]).length||c.conc) h+='<circle cx="'+(x+s*cs-7)+'" cy="'+(y+7)+'" r="5" fill="'+(c.conc?'#7a9de0':'#c9a84c')+'"/>';
     h+='<title>'+esc(c.name)+(c.status&&HINTS[c.status]&&HINTS[c.status].label?' — '+HINTS[c.status].label:'')+'</title></g>';
   });
+  // light & darkness
+  if(G.light&&G.light!=='bright'){
+    const playerSide=NET.mode==='client'||UI.viewAs!=='dm';
+    if(playerSide&&Array.isArray(V.vis)){ const vis=new Set(V.vis); for(let y=0;y<G.rows;y++) for(let x=0;x<G.cols;x++){ const k=key(x,y); if(!vis.has(k)&&!(G.fog||{})[k]) h+='<rect x="'+x*cs+'" y="'+y*cs+'" width="'+cs+'" height="'+cs+'" fill="rgba(4,3,8,.62)" pointer-events="none"/>'; } }
+    else if(!playerSide){ const LM=lightMap(); Object.keys(LM).forEach(k=>{ if(LM[k]==='bright') return; const [x,y]=k.split(',').map(Number); h+='<rect x="'+x*cs+'" y="'+y*cs+'" width="'+cs+'" height="'+cs+'" fill="rgba(6,6,20,'+(LM[k]==='dark'?.42:.18)+')" pointer-events="none"/>'; }); }
+  }
+  Object.keys(G.tiles).forEach(k=>{ const tl=G.tiles[k]; if(tl.t!=='light') return; const [x,y]=k.split(',').map(Number), cx=x*cs+cs/2, cy=y*cs+cs/2;
+    h+='<circle cx="'+cx+'" cy="'+cy+'" r="'+cs*.32+'" fill="rgba(255,190,80,.25)" pointer-events="none"/><path d="M'+cx+' '+(cy-cs*.28)+' C'+(cx+cs*.2)+' '+(cy-cs*.02)+' '+(cx+cs*.12)+' '+(cy+cs*.2)+' '+cx+' '+(cy+cs*.2)+' C'+(cx-cs*.12)+' '+(cy+cs*.2)+' '+(cx-cs*.2)+' '+(cy-cs*.02)+' '+cx+' '+(cy-cs*.28)+'Z" fill="#f5b041" stroke="#7a3a0a" stroke-width="1" pointer-events="none"/>'; });
   // fog
   Object.keys(G.fog||{}).forEach(k=>{ const [x,y]=k.split(',').map(Number); h+='<rect x="'+x*cs+'" y="'+y*cs+'" width="'+cs+'" height="'+cs+'" fill="'+(dm?'rgba(10,8,14,.55)':'#050403')+'" pointer-events="none"/>'; });
   if(UI.gridEdit&&UI.hover) h+='<rect x="'+UI.hover.x*cs+'" y="'+UI.hover.y*cs+'" width="'+cs+'" height="'+cs+'" fill="none" stroke="#c9a84c" stroke-width="2" pointer-events="none"/>';
@@ -11008,6 +11025,7 @@ function paintAt(cell){
   const b=UI.brush; let it;
   if(b==='fogHide'||b==='fogShow') it={t:'fogPaint',keys:[k],on:b==='fogHide'};
   else if(b==='erase') it={t:'tile',keys:[k],tile:null};
+  else if(b==='light') it={t:'tile',keys:[k],tile:{t:'light',bright:20,dim:20}};
   else { const T=TILE_TYPES[b]; const tile={t:b}; if(T.hp){ tile.hp=T.hp; tile.maxHp=T.hp; tile.ac=T.ac; } if(T.door) tile.open=false; it={t:'tile',keys:[k],tile}; }
   P.batch.push(it); if(Host.quiet(it,UI.viewAs).ok) redrawGrid();
 }
@@ -11062,6 +11080,64 @@ function bindGrid(V,actor){
 function redrawGrid(){ const inner=$('#ginner'); if(!inner) return; const V=viewNow(); inner.innerHTML=gridSvg(V,actorFor(V)); }
 
 // ============================================================
+// LIGHT & VISION — ambient light per map, light sources (tiles and carried), darkvision and blindsight.
+//   A square is seen by a creature when it has line of sight to it AND the square is lit (bright or dim),
+//   or it lies within that creature's darkvision / blindsight. The party shares what it sees.
+// ============================================================
+const DV_RACES=[[/drow|dark elf|duergar|deep gnome|svirfneblin/i,120],[/elf|dwarf|gnome|half-orc|orc|tiefling|aasimar|genasi|tabaxi|goblin|hobgoblin|bugbear|kobold|yuan|firbolg|triton|lizard|shifter|kenku|changeling|minotaur|satyr|fairy|harengon|owlin|gith|dhampir|hexblood|reborn/i,60]];
+function dvForRace(race){ const r=String(race||''); for(const [re,ft] of DV_RACES) if(re.test(r)) return ft; return 0; }
+function sensesFt(sen,kind){ const m=new RegExp(kind+'\\s*(\\d+)','i').exec(String(sen||'')); return m?+m[1]:0; }
+const lightOn=()=>S.grid.on&&(S.grid.light||'bright')!=='bright';
+function lightSources(){
+  const out=[];
+  Object.keys(S.grid.tiles).forEach(k=>{ const t=S.grid.tiles[k]; if(t.t==='light'){ const [x,y]=k.split(',').map(Number); out.push({x:x+.5,y:y+.5,bright:(t.bright!=null?t.bright:20)/5,dim:(t.dim!=null?t.dim:20)/5,own:new Set([k])}); } });
+  S.combatants.forEach(c=>{ if(c.pos&&c.light&&!c.hidden){ const cc=centerOf(c); out.push({x:cc.x,y:cc.y,bright:(c.light.bright||20)/5,dim:(c.light.dim||20)/5,own:new Set(footprint(c))}); } });
+  return out;
+}
+// 'bright' | 'dim' | 'dark' for every square (computed once per call site)
+let LM_CACHE={v:-1,m:null}, VIS_CACHE={v:-1,s:null};
+function lightMap(){
+  if(LM_CACHE.v===STATE_VER&&NET.mode!=='client') return LM_CACHE.m;
+  const amb=S.grid.light||'bright', M={};
+  if(amb==='bright') return null;
+  LM_CACHE={v:STATE_VER,m:M};
+  const L=lightSources();
+  for(let y=0;y<S.grid.rows;y++) for(let x=0;x<S.grid.cols;x++){ const k=key(x,y); let lv=amb==='dim'?'dim':'dark';
+    for(const s of L){ if(lv==='bright') break; const dd=Math.max(Math.abs(x+.5-s.x),Math.abs(y+.5-s.y))-.5; if(dd>s.bright+s.dim) continue;
+      if(!s.own.has(k)&&!sightClear({x:s.x,y:s.y},{x:x+.5,y:y+.5},new Set([...s.own,k]))) continue;
+      lv=dd<=s.bright?'bright':'dim'; }
+    M[k]=lv; }
+  return M;
+}
+// squares the given creatures can see right now (null = everything they have line of sight to, i.e. no lighting rules)
+function visibleSet(eyes,LM){
+  const vis=new Set(), rng=(+S.settings.visionFt||0)/5;
+  const E=eyes.filter(c=>c.pos&&c.hp>0&&!hasCond(c,'Blinded')&&!hasCond(c,'Unconscious')).map(c=>({c,cc:centerOf(c),s:sizeCells(c),own:footprint(c),dv:(+c.dv||0)/5,bs:(+c.blind||0)/5}));
+  if(!E.length) return vis;
+  for(let y=0;y<S.grid.rows;y++) for(let x=0;x<S.grid.cols;x++){ const k=key(x,y), p={x:x+.5,y:y+.5};
+    for(const e of E){
+      const dd=Math.max(Math.abs(p.x-e.cc.x),Math.abs(p.y-e.cc.y))-e.s/2;
+      if(e.own.includes(k)){ vis.add(k); break; }
+      if(rng&&dd>rng&&!(e.bs&&dd<=e.bs)) continue;
+      if(LM&&LM[k]==='dark'&&!(e.dv&&dd<=e.dv)&&!(e.bs&&dd<=e.bs)) continue;
+      const skip=new Set(e.own); skip.add(k);
+      if(sightClear(e.cc,p,skip)){ vis.add(k); break; } } }
+  return vis;
+}
+function partyVision(){ if(VIS_CACHE.v===STATE_VER) return VIS_CACHE.s; const s=visibleSet(partyEyes(),lightMap()); VIS_CACHE={v:STATE_VER,s}; return s; }
+function partyEyes(){ return S.combatants.filter(c=>teamOf(c)==='party'&&!c.hidden); }
+// can creature a see creature b (for advantage/disadvantage)?
+function canSee(a,b){
+  if(!S.grid.on||!a.pos||!b.pos) return true;
+  if(hasCond(a,'Blinded')) return false;
+  if(hasCond(b,'Invisible')&&!(+a.blind&&distFt(a,b)<=+a.blind)) return false;
+  if(!hasLoS(a,b)) return false;
+  if(!lightOn()) return true;
+  const d=distFt(a,b); if((+a.blind&&d<=+a.blind)||(+a.dv&&d<=+a.dv)) return true;
+  const LM=lightMap(); return footprint(b).some(k=>LM[k]!=='dark');
+}
+
+// ============================================================
 // UI — renders from a view (S for the DM, redact(S,seat) for a player) and only ever calls send(intent)
 // ============================================================
 function viewNow(){ return NET.mode==='client'||UI.viewAs==='dm'?S:redact(S,UI.viewAs); }
@@ -11109,6 +11185,9 @@ function renderBanner(V){
   if(PREP) h+='<div class="bn-prep">📝 <b>Editing prep</b> <input id="pr-name" value="'+esc(PREP.name)+'" style="width:220px"> <span class="sub">'+(PREP.dirty?'unsaved changes':'saved')+' · paint the map, add monsters (👻 hidden ones too), drop party members or ▶ start squares where the heroes begin</span><span class="spacer" style="flex:1"></span><button class="btn sm" id="pr-notes-b">📝 Notes</button><button class="btn sm primary" id="pr-save">💾 Save</button><button class="btn sm" id="pr-saveclose">Save &amp; close</button><button class="btn sm danger" id="pr-close">Close</button></div>';
   else if(UI.viewAs==='dm'&&S.activePrep&&!S.started&&S.combatants.length) h+='<div class="bn-info">📚 <b>'+esc(S.activePrep.name)+'</b> is set up — roll initiative and press Start Combat when the party is ready.</div>';
   if(UI.viewAs==='dm'&&S.requests.length) h+=S.requests.map(r=>{ const s=seatOf(r.seat), c=cById(r.cid); return '<div class="bn-req">🙋 <b>'+esc(s?s.name:'?')+'</b> wants to control <b>'+esc(c?c.name:'?')+'</b> <button class="btn sm primary" data-req="'+r.id+'" data-ok="1">Accept</button><button class="btn sm danger" data-req="'+r.id+'" data-ok="0">Deny</button></div>'; }).join('');
+  const needInit=V.combatants.filter(c=>S.settings.playerInit&&!hasInit(c)&&teamOf(c)==='party'&&S.seats.some(s=>s.controls.includes(c.id)||(c.owner&&s.controls.includes(c.owner))));
+  if(UI.viewAs==='dm'&&needInit.length&&S.combatants.some(c=>hasInit(c))) h+='<div class="bn-info">🎲 Waiting for players’ initiative: '+needInit.map(c=>'<b>'+esc(c.name)+'</b>').join(', ')+'</div>';
+  if(UI.viewAs!=='dm') needInit.filter(c=>isMine(V,c)).forEach(c=>{ h+='<div class="bn-req">🎲 Initiative for <b>'+esc(c.name)+'</b> <button class="btn sm primary" data-ini="'+c.id+'">Roll d20'+fm(c.initMod||0)+'</button> <span class="sub">or I rolled</span> <input type="number" class="ini-in" data-ini-in="'+c.id+'" style="width:64px" placeholder="total"> <button class="btn sm" data-ini-set="'+c.id+'">Set</button></div>'; });
   if(UI.viewAs!=='dm'){
     if(V.requests.length) h+='<div class="bn-info">⏳ Waiting for the DM to approve: '+V.requests.map(r=>esc((V.combatants.find(c=>c.id===r.cid)||{}).name||'?')).join(', ')+'</div>';
     if(V.you&&!V.you.controls.length&&!V.requests.length) h+='<div class="bn-info">You aren’t controlling anyone yet — <a href="#" id="bn-claim">pick your character</a>.</div>';
@@ -11116,6 +11195,9 @@ function renderBanner(V){
   }
   b.innerHTML=h; b.style.display=h?'block':'none';
   b.querySelectorAll('[data-req]').forEach(x=>x.onclick=()=>send({t:'claimResolve',rid:x.dataset.req,ok:x.dataset.ok==='1'}));
+  b.querySelectorAll('[data-ini]').forEach(x=>x.onclick=()=>send({t:'initSelf',cid:x.dataset.ini}));
+  b.querySelectorAll('[data-ini-set]').forEach(x=>x.onclick=()=>{ const i=b.querySelector('[data-ini-in="'+x.dataset.iniSet+'"]'); if(i&&i.value!=='') send({t:'initSelf',cid:x.dataset.iniSet,value:i.value}); });
+  b.querySelectorAll('[data-ini-in]').forEach(i=>i.onkeydown=e=>{ if(e.key==='Enter'&&i.value!=='') send({t:'initSelf',cid:i.dataset.iniIn,value:i.value}); });
   const bc=$('#bn-claim'); if(bc) bc.onclick=e=>{ e.preventDefault(); openPlayers(); };
   const pn=$('#pr-name'); if(pn) pn.onchange=()=>{ PREP.name=pn.value.trim()||PREP.name; PREP.dirty=true; save(); };
   const on=(s,f)=>{ const e=$(s); if(e) e.onclick=f; };
@@ -11346,6 +11428,8 @@ function cardHtml(V,c,compact){
       if(own==='pct'||own==='hp'){ const T=own==='hp'?(hc.hp||{damaged:full.maxHp,heavy:Math.ceil(full.maxHp/2),critical:Math.ceil(full.maxHp/4)}):hc.pct, u=own==='hp'?' HP':'%';
         h+='<div class="row" style="margin-top:6px">'+[['damaged','Damaged below'],['heavy','Heavily damaged below'],['critical','Critical below']].map(([k,l])=>'<label class="sub">'+l+' <input type="number" class="hn-t" data-k="'+k+'" value="'+T[k]+'" style="width:62px">'+u+'</label>').join('')+'</div>'; }
       h+='<div class="row" style="margin-top:6px">'+['unhurt','damaged','heavy','critical'].map(k=>'<button class="btn sm'+(hc.mode==='manual'&&hc.manual===k?' primary':'')+'" data-hn="'+k+'" title="Set by hand (switches to manual)">'+HINTS[k].label+'</button>').join('')+'</div>'; }
+    if(S.grid.on&&(dm||mine)) h+='<h3>Vision &amp; light</h3><div class="row">'+(dm?'<label class="sub">Darkvision <input type="number" id="tw-dv" min="0" step="10" value="'+(+full.dv||0)+'" style="width:60px"> ft</label><label class="sub">Blindsight <input type="number" id="tw-bs" min="0" step="5" value="'+(+full.blind||0)+'" style="width:56px"> ft</label>':'<span class="sub">Darkvision '+(+full.dv||0)+' ft</span>')+
+      '<button class="btn sm'+(full.light?' primary':'')+'" id="tw-light" title="A torch, lantern or the Light cantrip: bright light 20 ft, dim 20 ft more">🔥 '+(full.light?'Carrying light':'Carry a light')+'</button></div>';
     if(dm&&full.kind!=='pc') h+='<h3>Adjust</h3><div class="row"><label class="sub">Name <input id="tw-name" value="'+esc(full.name)+'" style="width:140px"></label><label class="sub">AC <input type="number" id="tw-ac" value="'+full.ac+'" style="width:56px"></label><label class="sub">Max HP <input type="number" id="tw-hp" value="'+full.maxHp+'" style="width:64px"></label><label class="sub">Speed <input id="tw-sp" value="'+esc(full.speed||'')+'" style="width:80px"></label><label class="sub">Side <select id="tw-team">'+['enemy','neutral','party'].map(t=>'<option value="'+t+'"'+(teamOf(full)===t?' selected':'')+'>'+(t==='party'?'ally':t)+'</option>').join('')+'</select></label></div>';
     if(dm&&teamOf(full)!=='party'){ if((full.actions||[]).length) h+='<h3>Stat block actions</h3>'+full.actions.map(x=>'<div class="act"><div class="an">'+esc(x.name)+(Number.isFinite(x.bonus)?' <span style="color:var(--gold);font-size:12px">'+fm(x.bonus)+'</span>':'')+'</div>'+(x.damage||x.note?'<div class="ad">'+esc([x.damage,x.dtype,x.note].filter(Boolean).join(' · '))+'</div>':'')+'</div>').join('');
       if((full.traits||[]).length) h+='<h3>Traits</h3>'+full.traits.map(t=>'<div class="act"><div class="an">'+esc(t.name)+'</div><div class="ad">'+esc(t.desc)+'</div></div>').join(''); }
@@ -11377,6 +11461,8 @@ function bindCard(V,c){
   $$('[data-cond]').forEach(b=>b.onclick=()=>send({t:'cond',cid:full.id,cond:b.dataset.cond}));
   const ii=$('#init-in'); if(ii) ii.onchange=()=>{ const v=parseInt(ii.value,10); send({t:'initSet',rolls:[{id:full.id,init:isNaN(v)?null:v}]}); };
   const tw=(s,f)=>{ const e=$(s); if(e) e.onchange=()=>send({t:'dmPatch',cid:full.id,set:f(e.value)}); };
+  tw('#tw-dv',v=>({dv:Math.max(0,parseInt(v,10)||0)})); tw('#tw-bs',v=>({blind:Math.max(0,parseInt(v,10)||0)}));
+  on('#tw-light',()=>send({t:'lightSelf',cid:full.id}));
   tw('#tw-name',v=>({name:v.trim()||full.name})); tw('#tw-ac',v=>({ac:Math.max(0,parseInt(v,10)||full.ac)})); tw('#tw-sp',v=>({speed:v}));
   tw('#tw-hp',v=>{ const n=Math.max(1,parseInt(v,10)||full.maxHp); return full.hp>=full.maxHp?{maxHp:n,hp:n}:{maxHp:n,hp:Math.min(full.hp,n)}; }); tw('#tw-team',v=>({team:v}));
   const hm=$('#hn-mode'); if(hm) hm.onchange=()=>{ const m=hm.value; let hint={mode:m};
@@ -11398,8 +11484,9 @@ function fitView(){
 function gridToolbar(){
   if(UI.viewAs!=='dm') return '<div class="gtools"><button class="btn sm" id="g-fit" title="Fit the map to the screen">⤢ Fit</button><span class="gt-note">click a square to move · right-drag = pan · wheel = zoom</span></div>';
   if(!UI.gridEdit){ const unplaced=S.combatants.filter(c=>!c.pos);
-    return '<div class="gtools"><button class="btn sm" id="g-fit" title="Fit the map to the screen">⤢ Fit</button><button class="btn sm" id="g-edit">✏ Edit map</button>'+(unplaced.length?'<button class="btn sm" id="g-auto">📍 Place '+unplaced.length+' unplaced</button>':'')+'<button class="btn sm'+(S.settings.autoReveal?' primary':'')+'" id="g-reveal" title="Lift fog wherever the party can see">👁 Auto-reveal '+(S.settings.autoReveal?'on':'off')+'</button>'+'<span class="gt-note">drag = DM move · right-drag = pan · wheel = zoom</span></div>'; }
-  const brushes=[['wall','Wall'],['wallWood','Wooden wall'],['door','Wooden door'],['doorIron','Iron door'],['window','Window'],['difficult','Difficult'],['water','Water'],['pit','Pit'],['start','▶ Party start'],['erase','Erase'],['fogHide','Fog: hide'],['fogShow','Fog: reveal']];
+    return '<div class="gtools"><button class="btn sm" id="g-fit" title="Fit the map to the screen">⤢ Fit</button><button class="btn sm" id="g-edit">✏ Edit map</button>'+(unplaced.length?'<button class="btn sm" id="g-auto">📍 Place '+unplaced.length+' unplaced</button>':'')+'<button class="btn sm'+(S.settings.autoReveal?' primary':'')+'" id="g-reveal" title="Lift fog wherever the party can see">👁 Auto-reveal '+(S.settings.autoReveal?'on':'off')+'</button>'+
+      '<select id="g-light" title="Ambient light: in dim light or darkness, creatures need a light source or darkvision to see">'+[['bright','☀ Bright'],['dim','🌗 Dim'],['dark','🌑 Dark']].map(([v,l])=>'<option value="'+v+'"'+((S.grid.light||'bright')===v?' selected':'')+'>'+l+'</option>').join('')+'</select>'+'<span class="gt-note">drag = DM move · right-drag = pan · wheel = zoom</span></div>'; }
+  const brushes=[['wall','Wall'],['wallWood','Wooden wall'],['door','Wooden door'],['doorIron','Iron door'],['window','Window'],['difficult','Difficult'],['water','Water'],['pit','Pit'],['start','▶ Party start'],['light','🔥 Light source'],['erase','Erase'],['fogHide','Fog: hide'],['fogShow','Fog: reveal']];
   return '<div class="gtools edit"><button class="btn sm primary" id="g-edit">✓ Done editing</button>'+
     '<span class="seg">'+[['select','Move tokens'],['paint','Paint']].map(([t,l])=>'<button class="'+(UI.tool===t?'on':'')+'" data-tool="'+t+'">'+l+'</button>').join('')+'</span>'+
     (UI.tool==='paint'?'<select id="g-brush">'+brushes.map(([b,l])=>'<option value="'+b+'"'+(UI.brush===b?' selected':'')+'>'+l+'</option>').join('')+'</select>':'')+
@@ -11412,6 +11499,7 @@ function bindGridToolbar(){
   const on=(s,f)=>{ const e=$(s); if(e) e.onclick=f; };
   on('#g-fit',()=>fitView());
   on('#g-reveal',()=>send({t:'settings',set:{autoReveal:!S.settings.autoReveal}}));
+  const gl=$('#g-light'); if(gl) gl.onchange=()=>send({t:'gridCfg',set:{light:gl.value}});
   on('#g-edit',()=>{ UI.gridEdit=!UI.gridEdit; render(); });
   on('#g-auto',()=>{ autoPlace(); });
   $$('[data-tool]').forEach(b=>b.onclick=()=>{ UI.tool=b.dataset.tool; render(); });
@@ -11878,6 +11966,8 @@ $('#btn-clear').onclick=()=>{ if(confirm('Remove every combatant and reset the r
 
 // ---------------- turn flow ----------------
 $('#btn-next').onclick=()=>{
+  if(isDM()&&!S.started){ const wait=S.combatants.filter(c=>!hasInit(c)&&S.settings.playerInit&&S.seats.some(s=>controls(s.id,c)));
+    if(wait.length&&!confirm('Still waiting for '+wait.map(c=>c.name).join(', ')+' to roll initiative. Roll for them and start?')) return; }
   if(isDM()){ const r=send(S.started?{t:'nextTurn'}:{t:'startCombat'}); if(r.ok){ UI.selected=null; UI.pending=null; render(); } return; }
   const V=viewNow(), a=actorFor(V); if(!a) return; const r=send({t:'endTurn',cid:a.id}); if(r.ok){ UI.pending=null; render(); }
 };
@@ -11940,6 +12030,7 @@ $('#btn-menu').onclick=()=>{
     H3('Rules')+
     '<label class="optrow"><input type="checkbox" id="s-enforce"'+(st.enforce?' checked':'')+'> <b>Enforce legal moves in combat</b><span class="sub"> — players can only act on their own turn, within their action, bonus action, reaction and movement. Outside combat they move freely. You (DM) can always do anything.</span></label>'+
     '<label class="optrow"><input type="checkbox" id="s-confirm"'+(st.confirmClaims?' checked':'')+'> Players need my OK to take control of a character</label>'+
+    '<label class="optrow"><input type="checkbox" id="s-pinit"'+(st.playerInit?' checked':'')+'> Players roll their own initiative <span class="sub">(Roll Initiative skips characters a player controls; they roll or type their result)</span></label>'+
     '<label class="optrow"><input type="checkbox" id="s-mhp"'+(st.showMonsterHp?' checked':'')+'> Show exact HP of every creature to players <span class="sub">(normally they only see their own HP and AC; everyone else gets a health hint)</span></label>'+
     '<div class="optrow">Health hints by default: <select id="s-hmode"><option value="pct"'+(st.hint.mode==='pct'?' selected':'')+'>by % of max HP</option><option value="manual"'+(st.hint.mode==='manual'?' selected':'')+'>manual (I set them)</option><option value="hidden"'+(st.hint.mode==='hidden'?' selected':'')+'>show nothing</option></select>'+
       (st.hint.mode==='pct'?' · Damaged below <input type="number" class="s-hp" data-k="damaged" value="'+st.hint.pct.damaged+'" style="width:56px">% · Heavily damaged below <input type="number" class="s-hp" data-k="heavy" value="'+st.hint.pct.heavy+'" style="width:56px">% · Critical below <input type="number" class="s-hp" data-k="critical" value="'+st.hint.pct.critical+'" style="width:56px">%':'')+
@@ -11957,6 +12048,7 @@ $('#btn-menu').onclick=()=>{
   $('#s-enforce').onchange=e=>set({enforce:e.target.checked});
   $('#s-confirm').onchange=e=>set({confirmClaims:e.target.checked});
   $('#s-mhp').onchange=e=>set({showMonsterHp:e.target.checked});
+  $('#s-pinit').onchange=e=>set({playerInit:e.target.checked});
   $('#s-reveal').onchange=e=>{ set({autoReveal:e.target.checked}); if(e.target.checked&&!Object.keys(S.grid.fog||{}).length) toast('Tip: “Fog all” in ✏ Edit map, then the party’s sight clears it'); };
   $('#s-vision').onchange=e=>set({visionFt:Math.max(0,parseInt(e.target.value,10)||0)});
   $('#s-area').onchange=e=>set({areaRule:e.target.value});

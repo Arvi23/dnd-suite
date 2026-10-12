@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.0 — 2026-10-13
+- **Players roll their own initiative**: optional (on by default). The DM's roll skips player-controlled characters; players roll in-app or type their table roll; the DM sees who's missing and can roll for stragglers.
+- **Light & darkvision**: ambient light per map (bright / dim / dark), painted light sources and carried lights, darkvision and blindsight for PCs (by race) and monsters (from their senses). The party's shared vision drives what players see, which monsters appear for them, auto-revealed fog, and advantage or disadvantage for unseen attackers and targets.
+
 ## 0.9.0 — 2026-10-13 · first public release
 The suite as it stands before 1.0.
 
@@ -26,5 +30,4 @@ The suite as it stands before 1.0.
 - `dnd-server.py`: standard-library relay server; players join by address and screen name, see a filtered view and their read-only character sheet.
 
 ## Planned
-- **1.0** — players roll their own initiative; darkvision and light-aware vision.
 - **1.1** — DM undo, reaction prompts (Shield, opportunity attacks), shared dice from the sheet, effect durations and repeat saves, multiple live maps, legendary/lair actions, editable player sheets, HTTPS.

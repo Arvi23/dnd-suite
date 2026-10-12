@@ -154,6 +154,22 @@ Each pack draws its own floor, walls, wooden walls, doors (wooden and iron), win
 - Online players receive each picture only once.
 - *Monster icons by Cathelineau, DarkZaitzev, Delapouite, Lorc, Skoll and Sparker from game-icons.net, licensed CC BY 3.0. This credit is also shown in the monster picker.*
 
+**🎲 Players roll their own initiative** (⚙ → on by default).
+- **Roll Initiative** rolls for monsters and NPCs, and skips characters a player controls.
+- Each player gets a banner: **Roll d20+mod**, or type the total they rolled with real dice. Everyone sees the result in the log.
+- You see who you're still waiting for. **Start Combat** offers to roll for the stragglers.
+
+**🌑 Light & darkvision.**
+- The map toolbar sets the **ambient light**: ☀ Bright, 🌗 Dim or 🌑 Dark.
+- In dim light or darkness, a creature sees a square only if it's lit, or within its **darkvision** or **blindsight**:
+  - Darkvision comes from the character's race (elves, dwarves, half-orcs, tieflings…) or the monster's senses, and can be edited on the card.
+  - Light comes from **🔥 Light source** squares painted in ✏ Edit map (bright 20 ft + dim 20 ft), or a creature that **🔥 carries a light** (torch, lantern or the Light cantrip; players toggle their own).
+- The party shares what it sees:
+  - Players' screens shade squares the party can't currently see.
+  - Monsters standing in darkness nobody can see into are left off the players' map and initiative list.
+  - Auto-reveal only lifts fog the party can actually see.
+- Attacks follow the rules: attacking a target you can't see is at disadvantage, and attacking one that can't see you is at advantage.
+
 *Server-ready:* every click is sent as an intent to one rules engine (`Host.handle`). Each player's screen is built from their own redacted view (`redact(state, seat)`), which `dnd-server.py` carries over the network.
 
 ---

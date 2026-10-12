@@ -19,7 +19,8 @@ No install, no account, no database. Double-click `dnd-suite.html` and play. Whe
 - **Turn structure** — action, bonus action, reaction and movement per turn, Extra Attack and Multiattack counted; optional *legal moves only* enforcement for players.
 - **Casting from the sheet** — slots are spent on the character sheet; pick targets ("up to 3"), assign Magic Missile darts, aim cones, lines and spheres on the grid. Saves, half damage, resistances, concentration and conditions are rolled and applied.
 - **Grid** — walls, doors and windows with AC/HP, difficult terrain, water, pits; line of sight, cover, movement paths; six texture packs.
-- **Fog of war** — paint it, or let it lift automatically wherever the party can see.
+- **Fog of war, light & darkvision** — paint fog or let it lift wherever the party can see; dark maps, torches and light sources, darkvision and blindsight, advantage against targets who can't see you.
+- **Initiative** — players roll their own (or type their table roll); the DM rolls the monsters.
 - **Monsters** — 54 SRD stat blocks with icons, multiattack, on-hit riders, breath weapons with recharge; import more from 5e-database JSON.
 - **Prepped encounters** — build maps and monster placements before the session, then run them with one click.
 - **Table extras** — hidden monsters, turn timer, public and DM-only dice, health hints instead of exact enemy HP.
