@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>D&amp;D Suite — maps, sheets and a rules-aware battle map in one file</title>
+<meta name="description" content="A world map, 5e character sheets and a rules-aware battle map in a single HTML file. No install, no account. Optional tiny Python server for online play.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0b07;--panel:#17110a;--line:#3a2a0a;--gold:#c9a84c;--gold2:#e8cd7a;--text:#d6c3a1;--dim:#8a7455;--red:#d85a5a;--blue:#5aa0d8}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font:18px/1.6 'EB Garamond',Georgia,serif;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(1200px 600px at 70% -10%,rgba(201,168,76,.12),transparent 60%),radial-gradient(900px 500px at 0% 30%,rgba(216,90,90,.06),transparent 60%);pointer-events:none;z-index:-1}
+a{color:var(--gold2)}
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+h1,h2,h3{font-family:Cinzel,Georgia,serif;color:var(--gold);letter-spacing:.04em;font-weight:700}
+nav{display:flex;align-items:center;gap:20px;padding:18px 0}
+nav .brand{font-family:Cinzel,serif;color:var(--gold);font-size:18px;letter-spacing:.12em;text-decoration:none;margin-right:auto}
+nav a.l{color:var(--dim);text-decoration:none;font-size:16px}
+nav a.l:hover{color:var(--gold2)}
+.hero{padding:56px 0 30px;text-align:center}
+.hero h1{font-size:clamp(34px,6vw,62px);line-height:1.1;text-shadow:0 2px 30px rgba(201,168,76,.25)}
+.hero p.tag{font-size:clamp(18px,2.4vw,23px);color:var(--text);max-width:760px;margin:18px auto 0;font-style:italic}
+.btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:30px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:8px;border:1px solid #8b6914;color:var(--gold2);text-decoration:none;font-family:Cinzel,serif;font-size:15px;letter-spacing:.06em;background:rgba(201,168,76,.06);transition:.15s}
+.btn:hover{background:rgba(201,168,76,.16);transform:translateY(-1px)}
+.btn.primary{background:linear-gradient(180deg,#d8b65a,#a8873a);color:#1a1405;border-color:#c9a84c;font-weight:700}
+.btn.primary:hover{background:linear-gradient(180deg,#ecc96a,#c9a84c)}
+.note{font-size:14px;color:var(--dim);margin-top:12px}
+.shot{margin:44px auto 0;border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.75),0 0 0 1px rgba(201,168,76,.08);background:#000}
+.shot img{display:block;width:100%;height:auto}
+section{padding:64px 0 10px}
+section h2{font-size:clamp(26px,3.6vw,36px);text-align:center}
+section .lead{text-align:center;color:var(--dim);max-width:720px;margin:10px auto 34px;font-style:italic}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.card{background:linear-gradient(160deg,#21180c,#140f08);border:1px solid var(--line);border-radius:12px;padding:22px 22px 20px}
+.card .ic{font-size:30px}
+.card h3{font-size:19px;margin:8px 0 6px}
+.card p{font-size:16.5px;color:var(--text)}
+.feat{display:grid;grid-template-columns:repeat(2,1fr);gap:14px 28px;max-width:960px;margin:0 auto}
+.feat div{border-left:2px solid #8b6914;padding:4px 0 4px 14px}
+.feat b{color:var(--gold2);font-weight:500}
+.split{display:grid;grid-template-columns:1.1fr 1fr;gap:34px;align-items:center}
+.split .shot{margin:0}
+.steps{counter-reset:s;list-style:none}
+.steps li{counter-increment:s;position:relative;padding:0 0 16px 46px}
+.steps li::before{content:counter(s);position:absolute;left:0;top:0;width:32px;height:32px;border-radius:50%;border:1.5px solid var(--gold);color:var(--gold);display:flex;align-items:center;justify-content:center;font-family:Cinzel,serif;font-size:15px}
+code{font-family:Consolas,'Courier New',monospace;font-size:14.5px;background:rgba(0,0,0,.45);border:1px solid var(--line);padding:2px 7px;border-radius:5px;color:var(--gold2)}
+.gallery{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.gallery figure{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#000}
+.gallery img{display:block;width:100%;height:auto}
+.gallery figcaption{font-size:15px;color:var(--dim);padding:8px 12px;background:var(--panel);font-style:italic}
+footer{margin-top:70px;border-top:1px solid var(--line);padding:28px 0 40px;color:var(--dim);font-size:15px}
+footer .row{display:flex;gap:24px;flex-wrap:wrap;justify-content:space-between}
+@media(max-width:860px){.grid3{grid-template-columns:1fr}.feat{grid-template-columns:1fr}.split{grid-template-columns:1fr}.gallery{grid-template-columns:1fr}nav a.l.opt{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <a class="brand" href="#">⚔ D&amp;D Suite</a>
+    <a class="l opt" href="#features">Features</a>
+    <a class="l opt" href="#online">Online play</a>
+    <a class="l" href="https://github.com/Arvi23/dnd-suite">GitHub</a>
+  </nav>
+
+  <header class="hero">
+    <h1>Your whole table<br>in one file</h1>
+    <p class="tag">A world map, 5e character sheets and a battle map that knows the rules. No install, no account, no database — open it and play. Bring your players online with one tiny Python script.</p>
+    <div class="btns">
+      <a class="btn primary" href="dnd-suite.html">▶ Try it in your browser</a>
+      <a class="btn" href="https://github.com/Arvi23/dnd-suite/raw/main/dnd-suite.html" download>⬇ Download dnd-suite.html</a>
+      <a class="btn" href="https://github.com/Arvi23/dnd-suite">★ Source on GitHub</a>
+    </div>
+    <div class="note">Version 0.9 · free and open source (GPL-3.0) · everything stays in your browser</div>
+    <div class="shot"><img src="docs/img/battle-map.jpg" alt="The battle map: a wizard aims a Fireball at a pack of goblins while fog hides the next room" width="1600" height="900"></div>
+  </header>
+
+  <section>
+    <h2>Three tools, one roster</h2>
+    <p class="lead">Every tab shares the same characters. Damage on the battle map shows up on the sheet, and the sheet slides in wherever you are.</p>
+    <div class="grid3">
+      <div class="card"><div class="ic">🗺</div><h3>World map</h3><p>Draw kingdoms, regions and pins, keep notes per place, fog what the party hasn't found, and sync it all from your Obsidian vault. Export a spoiler-free map for players.</p></div>
+      <div class="card"><div class="ic">📜</div><h3>Character sheets</h3><p>Full 5e sheets: every class's spell list with prepare checkboxes, spell slots, rage, ki and other class resources, rests and level-ups.</p></div>
+      <div class="card"><div class="ic">⚔</div><h3>Encounters</h3><p>Initiative, a textured battle grid and a rules engine that handles actions, movement, attacks, spells, saves and conditions — so you can run the story instead of the math.</p></div>
+    </div>
+  </section>
+
+  <section id="features">
+    <h2>A battle map that knows the rules</h2>
+    <p class="lead">Players click only what they can legally do; the DM can always override.</p>
+    <div class="feat">
+      <div><b>Turn structure.</b> Action, bonus action, reaction and movement every turn, Extra Attack and Multiattack counted, optional legal-moves enforcement and turn timer.</div>
+      <div><b>Spells from the sheet.</b> Slots are spent on the character sheet. Pick targets, assign Magic Missile darts, aim cones, lines and spheres — everyone inside is hit.</div>
+      <div><b>Dice that apply themselves.</b> Saves, half damage, resistances, crits, concentration checks, Sneak Attack, Divine Smite and conditions are rolled and applied for you.</div>
+      <div><b>Walls, doors and cover.</b> Line of sight, half cover, difficult terrain, and doors and windows with AC and HP you can break.</div>
+      <div><b>Fog of war.</b> Paint it by hand or let it lift wherever the party can see. Hidden monsters stay hidden until you reveal them.</div>
+      <div><b>54 SRD monsters.</b> Checked against the SRD, with icons, multiattack, on-hit effects, breath weapons and recharge. Import more from any 5e-database pack.</div>
+      <div><b>Prepped encounters.</b> Build maps and monster placements before the session and set them up with a single click.</div>
+      <div><b>Six texture packs.</b> Dungeon, wilderness, cave, tavern, classic and high-contrast — or drop in your own background image.</div>
+    </div>
+  </section>
+
+  <section id="online">
+    <h2>Play online</h2>
+    <div class="split">
+      <div>
+        <p style="margin-bottom:18px">Your browser stays the game's brain; a tiny standard-library Python server just passes messages. Each player only ever receives what their character could know — never your notes, hidden monsters or what's under the fog.</p>
+        <ol class="steps">
+          <li>Run <code>python3 dnd-server.py</code> on your PC or a Raspberry Pi. It prints a DM key and the join address.</li>
+          <li>In the suite: <b>Encounter → 🌐 Online</b>, connect with the key.</li>
+          <li>Players open the address, pick a screen name and ask to control their character. You accept — done.</li>
+        </ol>
+        <p class="note" style="text-align:left">For internet play, forward one TCP port on your router. For online sessions, run your own downloaded copy rather than this hosted one.</p>
+      </div>
+      <div class="shot"><img src="docs/img/player-view.jpg" alt="A player's screen: their own HP and AC, health hints for everyone else" loading="lazy" width="1600" height="900"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>A closer look</h2>
+    <div class="gallery" style="margin-top:28px">
+      <figure><img src="docs/img/character-sheet.jpg" alt="Character sheet" loading="lazy" width="1600" height="900"><figcaption>The character sheet — spellbook, slots, class resources.</figcaption></figure>
+      <figure><img src="docs/img/monsters.jpg" alt="Monster picker" loading="lazy" width="1600" height="900"><figcaption>Monster picker — hidden spawns, companions, your own token art.</figcaption></figure>
+    </div>
+  </section>
+
+  <footer>
+    <div class="row">
+      <div>⚔ D&amp;D Suite · © 2026 Arvi23 · <a href="https://github.com/Arvi23/dnd-suite/blob/main/LICENSE">GPL-3.0</a> · <a href="https://github.com/Arvi23/dnd-suite/blob/main/docs/MANUAL.md">Manual</a> · <a href="https://github.com/Arvi23/dnd-suite/blob/main/CHANGELOG.md">Changelog</a></div>
+      <div>Monster icons: game-icons.net (CC BY 3.0). Includes SRD 5.1 material (CC BY 4.0). <a href="https://github.com/Arvi23/dnd-suite/blob/main/CREDITS.md">Credits</a></div>
+    </div>
+    <div style="margin-top:10px;font-size:13.5px">Unofficial fan project — not affiliated with Wizards of the Coast. Dungeons &amp; Dragons is a trademark of Wizards of the Coast LLC.</div>
+  </footer>
+</div>
+</body>
+</html>
