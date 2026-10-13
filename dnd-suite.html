@@ -8013,7 +8013,7 @@ function CharSheetModule(HOST){
     c.subclass=c.subclass||'';
     c.resUsed=(c.resUsed&&typeof c.resUsed==='object')?c.resUsed:{}; c.raging=!!c.raging;
     c.trackers=(c.trackers||[]).map(function(t){return {id:t.id||uid(),name:String(t.name||''),max:Math.max(1,+t.max||1),reset:(t.reset==='short'||t.reset==='none')?t.reset:'long',used:Math.max(0,+t.used||0)};});
-    c.layout=c.layout||null;
+    c.layout=c.layout||null; c.spans=c.spans&&typeof c.spans==='object'?c.spans:{};
     c.locationId=c.locationId||''; c.dmNotes=c.dmNotes||''; c.updatedAt=c.updatedAt||new Date().toISOString();
     return c;
   }
@@ -8122,7 +8122,12 @@ function CharSheetModule(HOST){
   '.csx-pb-row .csx-pb-mod{color:#9a855a;font-size:11px;width:56px}'+
   '.csx-ro input,.csx-ro textarea,.csx-ro select,.csx-ro .csx-pip,.csx-ro .csx-insp,.csx-ro input[type=checkbox]{pointer-events:none;opacity:.7}'+
   '.csx-col{min-height:60px}'+
-  '.csx-sect{margin-bottom:16px}'+
+  '.csx-sect{margin-bottom:16px;position:relative}'+
+  '.csx-spanbtn{position:absolute;top:-3px;right:0;z-index:2;background:none;border:1px solid transparent;border-radius:4px;color:#6a5a3a;cursor:pointer;font-size:13px;line-height:1;padding:2px 6px;opacity:.55}'+
+  '.csx-sect:hover>.csx-spanbtn{opacity:1;border-color:#4a3a1a;color:#c9a84c}'+
+  '.csx-band{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 16px;margin-bottom:4px}'+
+  '.csx-band .csx-span2{grid-column:span 2}.csx-band .csx-span3{grid-column:1/-1}'+
+  '.csx-spinfo{cursor:pointer}.csx-spinfo.csx-wrap{white-space:normal;overflow:visible}'+
   '.csx-sect.csx-dragging{opacity:.35}'+
   '.csx-sect.csx-dragover{outline:1px dashed #8b6914;outline-offset:3px;border-radius:4px}'+
   '.csx-handle{cursor:grab;color:#6a5a3a;user-select:none;margin-right:2px}'+
@@ -8146,7 +8151,7 @@ function CharSheetModule(HOST){
   '.csx-ragebtn{padding:2px 10px;font-size:11px}.csx-ragebtn.on{background:rgba(224,82,82,.25);border-color:#e05252;color:#f3b0b0}'+
   '.csx-ragebar{background:linear-gradient(90deg,rgba(224,82,82,.22),rgba(224,82,82,.06));border:1px solid #7a2a2a;border-radius:6px;padding:6px 9px;font-size:11.5px;color:#f3c0c0;margin-bottom:6px;line-height:1.45}'+
   '.csx-trk .csx-trkname{flex:1;min-width:90px;font-size:12px;padding:3px 6px}.csx-trk .csx-trkmax{width:44px;font-size:12px;padding:3px 4px;text-align:center}.csx-trk .csx-trkreset{font-size:11px;padding:2px 3px}'+
-  '@media (max-width:920px){.csx-cols{grid-template-columns:1fr 1fr}.csx-head-grid{grid-template-columns:repeat(3,1fr)}}';
+  '@media (max-width:920px){.csx-cols{grid-template-columns:1fr 1fr}.csx-head-grid{grid-template-columns:repeat(3,1fr)}.csx-band{grid-template-columns:repeat(2,minmax(0,1fr))}.csx-band .csx-span2,.csx-band .csx-span3{grid-column:1/-1}}';
   var styleEl=document.createElement('style');styleEl.textContent=CSS;document.head.appendChild(styleEl);
   function mkOv(id,frameId){var ov=document.createElement('div');ov.className='csx-ov';ov.id=id;ov.innerHTML='<div class="csx-frame" id="'+frameId+'"></div>';document.body.appendChild(ov);ov.addEventListener('mousedown',function(e){if(e.target===ov)ov.classList.remove('open');});return ov;}
   var rosterOv=mkOv('csx-roster','csx-roster-frame');
@@ -8511,11 +8516,18 @@ function CharSheetModule(HOST){
     } else {
       layout=DEF.map(function(col){return col.filter(function(id){return !!S[id];});});
     }
-    html+='<div class="csx-body'+(ro?' csx-ro':'')+'"><div class="csx-cols">'+layout.map(function(col,i){
-      return '<div class="csx-col" data-col="'+i+'">'+col.map(function(id){return '<div class="csx-sect" data-sect="'+id+'">'+S[id]+'</div>';}).join('')+'</div>';
+    // panels can be widened: 2 columns or the full width; widened panels sit in a band above the columns
+    var spans=c.spans||{};
+    LAST_LAYOUT=layout.map(function(col){return col.slice();});
+    var spanBtn=function(id){ var n=spans[id]||1; return '<button type="button" class="csx-spanbtn" data-span="'+id+'" title="'+(n===1?'Widen this panel to two columns':n===2?'Widen to the full width':'Back to one column')+'">'+(n===1?'&#8596;':n===2?'&#11034;':'&#8676;')+'</button>'; };
+    var sect=function(id){ var n=spans[id]||1; return '<div class="csx-sect'+(n>1?' csx-span'+n:'')+'" data-sect="'+id+'">'+spanBtn(id)+S[id]+'</div>'; };
+    var banded=[]; layout.forEach(function(col){ col.forEach(function(id){ if((spans[id]||1)>1) banded.push(id); }); });
+    html+='<div class="csx-body'+(ro?' csx-ro':'')+'">'+(banded.length?'<div class="csx-band">'+banded.map(sect).join('')+'</div>':'')+'<div class="csx-cols">'+layout.map(function(col,i){
+      return '<div class="csx-col" data-col="'+i+'">'+col.filter(function(id){ return (spans[id]||1)===1; }).map(sect).join('')+'</div>';
     }).join('')+'</div></div>';
     return html;
   }
+  var LAST_LAYOUT=null;
   function openSheet(id,forceRO){
     var c=null, local=true;
     chars.forEach(function(x){if(x.id===id)c=x;});
@@ -8678,7 +8690,9 @@ function CharSheetModule(HOST){
     root.querySelectorAll('[data-trk-del]').forEach(function(b){ b.onclick=function(){ var t=c.trackers[+b.dataset.trkDel]; if(t&&t.name&&!confirm('Remove tracker "'+t.name+'"?')) return; c.trackers.splice(+b.dataset.trkDel,1); touch(c); rerender(); }; });
     var tadd=root.querySelector('#csx-trk-add'); if(tadd) tadd.onclick=function(){ c.trackers.push({id:uid(),name:'',max:1,reset:'long',used:0}); touch(c); rerender(); var ins=root.querySelectorAll('.csx-trkname'); if(ins.length) ins[ins.length-1].focus(); };
     var tpre=root.querySelector('#csx-trk-preset'); if(tpre) tpre.onchange=function(){ var k=tpre.value, pr=TRACKER_PRESETS[k]; if(!pr) return; c.trackers.push({id:uid(),name:k.replace(/\s*\((feat)\)$/,''),max:pr[0],reset:pr[1],used:0}); touch(c); rerender(); };
-    var lrst=root.querySelector('#csx-layout-reset'); if(lrst) lrst.onclick=function(){ c.layout=null; touch(c); toast('Panel layout reset'); rerender(); };
+    var lrst=root.querySelector('#csx-layout-reset'); if(lrst) lrst.onclick=function(){ c.layout=null; c.spans={}; touch(c); toast('Panel layout reset'); rerender(); };
+    root.querySelectorAll('.csx-spanbtn').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); var id=b.dataset.span; c.spans=c.spans||{}; var n=((c.spans[id]||1)%3)+1; if(n===1) delete c.spans[id]; else c.spans[id]=n; if(!ro) touch(c); rerender(); }; });
+    root.querySelectorAll('.csx-spinfo').forEach(function(x){ x.onclick=function(){ x.classList.toggle('csx-wrap'); }; });
     // Drag-to-rearrange panels: grab a section by its \u283F handle and drop it anywhere in any column
     var draggedId=null;
     root.querySelectorAll('.csx-handle').forEach(function(h){
@@ -8690,6 +8704,8 @@ function CharSheetModule(HOST){
         var arr=[]; col.querySelectorAll('.csx-sect').forEach(function(s){ arr.push(s.dataset.sect); });
         layout.push(arr);
       });
+      // widened panels live in the band but keep their home column
+      (LAST_LAYOUT||[]).forEach(function(col,i){ col.forEach(function(id,j){ if(!layout[i]) return; if(layout.some(function(c2){return c2.indexOf(id)>=0;})) return; if(!(c.spans||{})[id]) return; layout[i].splice(Math.min(j,layout[i].length),0,id); }); });
       return layout;
     }
     function dropSection(colIdx,beforeId,after){
@@ -8701,6 +8717,7 @@ function CharSheetModule(HOST){
         var bi=target.indexOf(beforeId);
         if(bi<0) target.push(draggedId); else target.splice(bi+(after?1:0),0,draggedId);
       } else target.push(draggedId);
+      if(c.spans&&c.spans[draggedId]){ delete c.spans[draggedId]; }   // dropped into a column → back to one column wide
       c.layout=layout; draggedId=null; touch(c); rerender();
     }
     root.querySelectorAll('.csx-sect').forEach(function(s){
@@ -9525,6 +9542,8 @@ body.suite-drawer .csx-ov{padding:0;background:transparent;backdrop-filter:none;
 body.suite-drawer .csx-frame{max-height:100vh;height:100vh;border-radius:0;border-width:0 0 0 2px;max-width:none!important}
 body.suite-drawer #csx-roster-frame,body.suite-drawer #csx-sheet-frame{max-width:none}
 body.suite-drawer .csx-cols{grid-template-columns:1fr 1fr}
+body.suite-drawer .csx-band{grid-template-columns:minmax(0,1fr)}
+body.suite-drawer .csx-band .csx-span2,body.suite-drawer .csx-band .csx-span3{grid-column:1/-1}
 /* side drawer: the header stacks into two columns so every label sits on its own field */
 body.suite-drawer .csx-head-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 10px}
 body.suite-drawer .csx-head{gap:12px;padding:12px 14px 10px}

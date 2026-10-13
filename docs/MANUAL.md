@@ -170,6 +170,12 @@ Each pack draws its own floor, walls, wooden walls, doors (wooden and iron), win
   - Auto-reveal only lifts fog the party can actually see.
 - Attacks follow the rules: attacking a target you can't see is at disadvantage, and attacking one that can't see you is at advantage.
 
+**↔ Wider sheet panels.**
+- Hover any panel on the character sheet and press ↔. Each press cycles it one column → two columns → full width → back.
+- Widened panels move into a band at the top of the sheet. That's handy for the spell list, features or the backstory.
+- Dragging a widened panel back into a column makes it normal width again, and **Reset Layout** clears it all.
+- Long spell descriptions in the list expand when you click them.
+
 *Server-ready:* every click is sent as an intent to one rules engine (`Host.handle`). Each player's screen is built from their own redacted view (`redact(state, seat)`), which `dnd-server.py` carries over the network.
 
 ---

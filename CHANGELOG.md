@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1 — 2026-10-13
+- **Wider sheet panels**: every character-sheet panel has a ↔ button that cycles one column → two columns → full width (saved per character). Widened panels sit in a band above the columns; **Reset Layout** puts everything back.
+- Click a truncated spell description in the spell list to show it in full.
+
 ## 1.0.0 — 2026-10-13
 - **Players roll their own initiative**: optional (on by default). The DM's roll skips player-controlled characters; players roll in-app or type their table roll; the DM sees who's missing and can roll for stragglers.
 - **Light & darkvision**: ambient light per map (bright / dim / dark), painted light sources and carried lights, darkvision and blindsight for PCs (by race) and monsters (from their senses). The party's shared vision drives what players see, which monsters appear for them, auto-revealed fog, and advantage or disadvantage for unseen attackers and targets.
