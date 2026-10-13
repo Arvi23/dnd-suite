@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>D&amp;D Suite — maps, sheets and a rules-aware battle map in one file</title>
+<title>D&amp;D Suite — world map, player handout, character sheets and battle map in one file</title>
 <meta name="description" content="A world map, 5e character sheets and a rules-aware battle map in a single HTML file. No install, no account. Optional tiny Python server for online play.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -62,28 +62,50 @@ footer .row{display:flex;gap:24px;flex-wrap:wrap;justify-content:space-between}
 <div class="wrap">
   <nav>
     <a class="brand" href="#">⚔ D&amp;D Suite</a>
-    <a class="l opt" href="#features">Features</a>
+    <a class="l opt" href="#map">World map</a>
+    <a class="l opt" href="#features">Battle map</a>
     <a class="l opt" href="#online">Online play</a>
     <a class="l" href="https://github.com/Arvi23/dnd-suite">GitHub</a>
   </nav>
 
   <header class="hero">
     <h1>Your whole table<br>in one file</h1>
-    <p class="tag">A world map, 5e character sheets and a battle map that knows the rules. No install, no account, no database — open it and play. Bring your players online with one tiny Python script.</p>
+    <p class="tag">Map your world and hand it to your players, keep their character sheets, and run fights on a battle map that knows the rules. One HTML file — no install, no account, no database. Bring your players online with one tiny Python script.</p>
     <div class="btns">
       <a class="btn primary" href="dnd-suite.html">▶ Try it in your browser</a>
       <a class="btn" href="https://github.com/Arvi23/dnd-suite/raw/main/dnd-suite.html" download>⬇ Download dnd-suite.html</a>
       <a class="btn" href="https://github.com/Arvi23/dnd-suite">★ Source on GitHub</a>
     </div>
     <div class="note">Version 1.0 · free and open source (GPL-3.0) · everything stays in your browser</div>
-    <div class="shot"><img src="docs/img/battle-map.jpg" alt="The battle map: a wizard aims a Fireball at a pack of goblins while fog hides the next room" width="1600" height="900"></div>
+    <div class="shot"><img src="docs/img/player-map-overview.jpg" alt="The player handout: a fantasy world map with kingdoms, cities, roads and rivers" width="1600" height="900"></div>
   </header>
+
+  <section id="map">
+    <h2>It started with a map</h2>
+    <p class="lead">Before the battle grid and the character sheets, there was a world map — and the handout your players open between sessions.</p>
+    <div class="split">
+      <div class="shot"><img src="docs/img/map-editor.jpg" alt="The map editor with kingdoms, pins, roads and a city's details" loading="lazy" width="1600" height="900"></div>
+      <div>
+        <h3 style="font-size:20px;margin-bottom:8px">For the DM: the editor</h3>
+        <p>Drop in any map image and bring it to life: kingdoms and regions, cities and dungeons, roads, rivers and sea routes with names that follow the curve. Every place gets lore in Markdown with <code>[[wikilinks]]</code>, NPCs, buildings, a cover image, rumours you reveal one at a time — and DM notes that never leave your screen. Fog what they haven't found.</p>
+        <p style="margin-top:12px">Already keep your world in <b>Obsidian</b>? <b>⟳ Sync Vault</b> reads your places, people, factions and hooks straight from your notes — and never writes to your vault.</p>
+      </div>
+    </div>
+    <div class="split" style="margin-top:34px">
+      <div>
+        <h3 style="font-size:20px;margin-bottom:8px">For the players: the handout</h3>
+        <p><b>Export Player Map</b> builds a single <code>world-map.html</code> you can drop in the group chat. It opens offline in any browser: parchment styling, zoom and pan, popups with lore, people and places, a compendium, a rumour tracker, a journal, their own notes on every location and a party marker they can move.</p>
+        <p style="margin-top:12px">Only what you've explored and chosen to share goes in. New session, new export — their notes carry over.</p>
+      </div>
+      <div class="shot"><img src="docs/img/player-map.jpg" alt="A player opens a city's popup: lore, rumours and their own notes" loading="lazy" width="1600" height="900"></div>
+    </div>
+  </section>
 
   <section>
     <h2>Three tools, one roster</h2>
     <p class="lead">Every tab shares the same characters. Damage on the battle map shows up on the sheet, and the sheet slides in wherever you are.</p>
     <div class="grid3">
-      <div class="card"><div class="ic">🗺</div><h3>World map</h3><p>Draw kingdoms, regions and pins, keep notes per place, fog what the party hasn't found, and sync it all from your Obsidian vault. Export a spoiler-free map for players.</p></div>
+      <div class="card"><div class="ic">🗺</div><h3>World map</h3><p>Draw kingdoms, regions, pins and roads, keep lore and secrets per place, sync from Obsidian — and export a spoiler-free handout your players can explore offline.</p></div>
       <div class="card"><div class="ic">📜</div><h3>Character sheets</h3><p>Full 5e sheets: every class's spell list with prepare checkboxes, spell slots, rage, ki and other class resources, rests and level-ups.</p></div>
       <div class="card"><div class="ic">⚔</div><h3>Encounters</h3><p>Initiative, a textured battle grid and a rules engine that handles actions, movement, attacks, spells, saves and conditions — so you can run the story instead of the math.</p></div>
     </div>
@@ -92,6 +114,7 @@ footer .row{display:flex;gap:24px;flex-wrap:wrap;justify-content:space-between}
   <section id="features">
     <h2>A battle map that knows the rules</h2>
     <p class="lead">Players click only what they can legally do; the DM can always override.</p>
+    <div class="shot" style="margin:0 auto 34px;max-width:1000px"><img src="docs/img/battle-map.jpg" alt="The battle map: a wizard aims a Fireball at a pack of goblins while fog hides the next room" loading="lazy" width="1600" height="900"></div>
     <div class="feat">
       <div><b>Turn structure.</b> Action, bonus action, reaction and movement every turn, Extra Attack and Multiattack counted, optional legal-moves enforcement and turn timer.</div>
       <div><b>Spells from the sheet.</b> Slots are spent on the character sheet. Pick targets, assign Magic Missile darts, aim cones, lines and spheres — everyone inside is hit.</div>

@@ -1,9 +1,31 @@
 # ⚔ D&D Suite
 
-**A world map, character sheets and a rules-aware battle map for D&D 5e — in one HTML file.**
+**A world map editor with a player handout, character sheets and a rules-aware battle map for D&D 5e — in one HTML file.**
 No install, no account, no database. Double-click `dnd-suite.html` and play. When you want your players at the table over the internet, run one small Python script.
 
 **[▶ Try it in your browser](https://arvi23.github.io/dnd-suite/dnd-suite.html)** · **[Project page](https://arvi23.github.io/dnd-suite/)** · **[Full manual](docs/MANUAL.md)** · **[Changelog](CHANGELOG.md)**
+
+![The world map handout your players get](docs/img/player-map-overview.jpg)
+
+## Where it started: the world map
+D&D Suite began as a **map tool**: a way to turn a campaign map image into something players can explore. That's still the heart of it.
+
+- **The editor (🗺 Map tab).** Drop in any map image. Then:
+  - Draw kingdoms and regions, place cities, towns, dungeons, ruins and points of interest.
+  - Trace roads, rivers, sea routes and walls, with names that follow the curve.
+  - Give every place public lore (with Markdown and `[[wikilinks]]`), NPCs, buildings, a cover image, rumours you reveal one at a time, and DM-only notes.
+  - Fog what the party hasn't found; fogging a kingdom fogs everything inside it.
+- **Your Obsidian vault, synced.** ⟳ **Sync Vault** reads your campaign's `Locations/`, `NPCs/` and `Factions/` notes and fills the map: places, people, rumours, hooks and kingdom details. It merges edits from both sides and never writes to your vault.
+- **The player handout.** **Export Player Map** produces a single `world-map.html` you can send to the group.
+  - It has parchment styling, zoom and pan, and popups with lore, NPCs and buildings.
+  - It also includes a compendium, a rumour tracker, a journal, per-place notes and a draggable party marker.
+  - It works offline and contains nothing you didn't choose to reveal.
+
+![Editing the world: pins, kingdoms, roads and a city's details](docs/img/map-editor.jpg)
+
+![What players see when they click a city](docs/img/player-map.jpg)
+
+From there it grew: character sheets that share one roster with the map, then a battle map that knows the rules, and finally online play.
 
 ![Battle map with a Fireball being aimed](docs/img/battle-map.jpg)
 
@@ -11,7 +33,7 @@ No install, no account, no database. Double-click `dnd-suite.html` and play. Whe
 
 | Tab | What it does |
 |---|---|
-| 🗺 **Map** | World-map editor: regions, kingdoms, pins, fog of war, per-place notes, and a one-click **Sync from Obsidian** vault import. Exports a spoiler-free player map. |
+| 🗺 **Map** | World-map editor: kingdoms, regions, pins, roads and rivers, lore, NPCs, buildings, rumours and fog of war, plus a one-click **Sync from Obsidian**. Exports a spoiler-free, offline player handout (`world-map.html`). |
 | 📜 **Characters** | Full 5e character sheets: every class's spell list with prepare checkboxes, spell slots, class resources (rage, ki, superiority dice…), rests, level-up. One roster shared by every tab. |
 | ⚔ **Encounter** | Initiative tracker and battle grid that knows the rules (see below). The character sheet slides in from the side. |
 
