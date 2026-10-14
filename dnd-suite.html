@@ -8929,7 +8929,7 @@ function CharSheetModule(HOST){
         caster:ci.type,abil:ci.abil,dc:8+pb+am,atk:pb+am,mod:am,slots:slots.slice(),slotsUsed:(c.slotsUsed||[]).slice(),spells:spells,
         resources:resDefs(c).map(function(d){ return {key:d.key,name:d.name,max:d.max===Infinity?-1:d.max,reset:d.reset,note:d.note,used:+(c.resUsed||{})[d.key]||0,rage:!!d.rage,pool:!!d.pool}; }),
         raging:!!c.raging,attacks:(c.attacks||[]).map(function(a){return {name:a.name,bonus:a.bonus,damage:a.damage,notes:a.notes};}),
-        speed:+c.speed||30,features:c.features||''};
+        speed:+c.speed||30,raceSpeed:(RACES[c.race]||{}).speed||null,features:c.features||''};
     },
     spendSlot: function(id,lvl){ var c=findLoaded(id); if(!c||!lvl) return false; var s=slotsFor(c); var i=lvl-1; if(!(s[i]>0)) return false; c.slotsUsed=c.slotsUsed||[0,0,0,0,0,0,0,0,0]; if((c.slotsUsed[i]||0)>=s[i]) return false; c.slotsUsed[i]=(c.slotsUsed[i]||0)+1; c.updatedAt=new Date().toISOString(); save(true); try{ if(window.CSX_CURRENT&&window.CSX_CURRENT.c===c) window.CSX_CURRENT.rerender(); }catch(e){} return true; },
     useResource: function(id,key,n){ var c=findLoaded(id); if(!c) return false; var d=resDefs(c).filter(function(x){return x.key===key;})[0]; if(!d) return false; c.resUsed=c.resUsed||{}; var u=+c.resUsed[key]||0; n=n==null?1:n; if(d.max!==Infinity&&u+n>d.max) return false; if(d.max!==Infinity) c.resUsed[key]=Math.max(0,u+n); if(d.rage) c.raging=n>0; c.updatedAt=new Date().toISOString(); save(true); try{ if(window.CSX_CURRENT&&window.CSX_CURRENT.c===c) window.CSX_CURRENT.rerender(); }catch(e){} return true; },
@@ -9750,6 +9750,43 @@ body.player-view .dm-only{display:none!important}
 code{font-family:Consolas,monospace;font-size:12px;color:#e8d5a0;background:rgba(0,0,0,.35);padding:2px 6px;border-radius:4px}
 .nt-url{user-select:all;font-size:14px}
 @media(max-width:1100px){#gside{width:320px}}
+/* ---- life & death ---- */
+.bn-dead,.bn-dying{display:flex;align-items:center;gap:8px;padding:6px 10px;margin:3px 0;border-radius:6px;flex-wrap:wrap}
+.bn-dead{background:rgba(40,40,40,.85);border:1px solid #555;color:#ddd}
+.bn-dying{background:rgba(120,16,16,.35);border:1px solid #c33;animation:dyingPulse 1.4s ease-in-out infinite}
+@keyframes dyingPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,77,77,.0)}50%{box-shadow:0 0 14px 2px rgba(255,77,77,.35)}}
+.pips{display:inline-flex;align-items:center;gap:3px;vertical-align:middle;margin:0 2px}
+.pips i{width:9px;height:9px;border-radius:50%;display:inline-block;border:1px solid;background:rgba(0,0,0,.4)}
+.pips i.ok{border-color:#7fc97f}.pips i.ok.on{background:#7fc97f}
+.pips i.no{border-color:#e05252}.pips i.no.on{background:#e05252}
+.pips em{width:6px}
+.chip.life-dying{border-color:#e05252;color:#ff9a9a;background:rgba(120,16,16,.35);font-weight:700}
+.chip.life-stable{border-color:#c9a84c;color:#e8d5a0}
+.chip.life-dead{border-color:#555;color:#aaa;background:#1b1b1b}
+.cmb.down{opacity:1}
+.cmb.life-dead{opacity:.55;filter:grayscale(1)}
+.cmb.life-dead .nm{text-decoration:line-through;text-decoration-color:rgba(255,255,255,.45)}
+.cmb.life-dying{border-color:#c33;animation:dyingPulse 1.4s ease-in-out infinite}
+.cmb.life-stable{opacity:.8}
+.death-box{display:flex;gap:12px;align-items:flex-start;padding:12px;border-radius:8px;margin:8px 0}
+.death-box .db-ic{font-size:34px;line-height:1}
+.death-box.dying{background:rgba(120,16,16,.3);border:1px solid #c33}
+.death-box.stable{background:rgba(201,168,76,.08);border:1px solid #8b6914}
+.death-box.dead{background:#1d1d1d;border:1px solid #444;color:#ccc}
+.logline.death{background:rgba(120,16,16,.18)}
+.logline.death b{color:#ff9a9a}
+.logline.undo{color:#9ab;font-style:italic}
+.rb-cur{color:var(--gold);font-weight:700}
+#flash{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:600;opacity:0;transition:opacity .3s}
+#flash.show{opacity:1}
+#flash .fl{padding:22px 40px;border-radius:12px;font-family:Georgia,serif;font-size:26px;text-align:center;background:rgba(14,11,7,.92);border:2px solid var(--gold);color:#e8d5a0;box-shadow:0 20px 60px rgba(0,0,0,.7)}
+#flash .fl b{color:#fff}
+#flash .fl-ic{font-size:54px;line-height:1.1}
+#flash .fl-dead{border-color:#777;background:rgba(20,20,20,.95);color:#ccc}
+#flash .fl-dying{border-color:#e05252;background:rgba(60,8,8,.94)}
+#flash .fl-up{border-color:#7fc97f}
+#flash .fl-turn{font-size:22px;padding:14px 30px}
+#btn-undo,#btn-redo{padding-left:9px;padding-right:9px;font-size:15px}
 </style>
 </head>
 <body>
@@ -9765,6 +9802,7 @@ code{font-family:Consolas,monospace;font-size:12px;color:#e8d5a0;background:rgba
   <span id="round-badge"></span>
   <button class="btn" id="btn-init">Roll Initiative</button>
   <button class="btn" id="btn-stop" title="End combat">&#9632; End</button>
+  <button class="btn" id="btn-undo" title="Undo (Ctrl+Z)">&#8630;</button><button class="btn" id="btn-redo" title="Redo (Ctrl+Y)">&#8631;</button>
   <button class="btn primary" id="btn-next">Start &rarr;</button>
   <button class="btn" id="btn-players" title="Seats, who controls whom, requests">&#128101; Players</button>
   <label class="sub" title="Preview exactly what a player sees and can do" style="font-style:normal">as <select id="view-as"></select></label>
@@ -9772,7 +9810,7 @@ code{font-family:Consolas,monospace;font-size:12px;color:#e8d5a0;background:rgba
   <button class="btn" id="btn-log" title="Combat log and dice">&#9776; Log</button>
   <button class="btn" id="btn-menu" title="Rules, timer, save/load">&#9881;</button>
 </div>
-<div id="banner"></div>
+<div id="banner"></div><div id="flash"></div>
 <div id="app">
   <div id="rail">
     <div id="rail-head"><span class="lbl">Initiative</span><button class="btn sm" id="btn-setinit" title="Type in initiative numbers your players rolled">Enter</button><button class="btn sm" id="btn-sortinit" title="Sort by initiative, highest first">Sort</button><button class="btn sm danger" id="btn-clear" title="Remove every combatant">Clear</button></div>
@@ -9878,7 +9916,8 @@ MONSTERS.forEach(m=>{m.id='srd_'+m.n.toLowerCase().replace(/[^a-z0-9]+/g,'-');m.
 const $=(s,r)=>(r||document).querySelector(s);
 const $$=(s,r)=>[...(r||document).querySelectorAll(s)];
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const d=n=>1+Math.floor(Math.random()*n);
+let ROLLS=0;
+const d=n=>(ROLLS++,1+Math.floor(Math.random()*n));
 const mod=v=>Math.floor(((+v||10)-10)/2);
 const fm=n=>(n>=0?'+':'')+n;
 const uid=p=>(p||'c')+Math.random().toString(36).slice(2,9);
@@ -9898,19 +9937,28 @@ function rollDice(expr,crit){
 }
 
 // ---------------- state ----------------
-const DEF_SETTINGS={enforce:false,confirmClaims:true,turnTimer:0,timerMode:'warn',showMonsterHp:false,autoReveal:false,visionFt:0,areaRule:'circle',playerInit:true,hint:{mode:'pct',pct:{damaged:100,heavy:50,critical:25}}};
+const DEF_SETTINGS={enforce:false,confirmClaims:true,turnTimer:0,timerMode:'warn',showMonsterHp:false,autoReveal:false,visionFt:0,areaRule:'circle',playerInit:true,playerUndo:'safe',hint:{mode:'pct',pct:{damaged:100,heavy:50,critical:25}}};
 // what players are told about a creature's health (they only ever see exact HP/AC for what they control)
-const HINTS={unhurt:{label:'Unhurt',w:100,col:'#7fc97f'},damaged:{label:'Damaged',w:70,col:'#c9a84c'},heavy:{label:'Heavily damaged',w:40,col:'#e0904c'},critical:{label:'Critical condition',w:15,col:'#e05252'},down:{label:'Down',w:0,col:'#7a2a2a'},unknown:{label:'',w:100,col:'#6a5a3a'}};
+const HINTS={unhurt:{label:'Unhurt',w:100,col:'#7fc97f'},damaged:{label:'Damaged',w:70,col:'#c9a84c'},heavy:{label:'Heavily damaged',w:40,col:'#e0904c'},critical:{label:'Critical condition',w:15,col:'#e05252'},down:{label:'Down',w:0,col:'#7a2a2a'},dying:{label:'Dying',w:0,col:'#ff4d4d'},stable:{label:'Stable',w:0,col:'#c9a84c'},dead:{label:'Dead',w:0,col:'#6b6b6b'},unknown:{label:'',w:100,col:'#6a5a3a'}};
 function hintCfg(c){ const g=S.settings.hint||DEF_SETTINGS.hint, own=c.hint||{}; const mode=own.mode&&own.mode!=='default'?own.mode:g.mode;
   return {mode, pct:Object.assign({},DEF_SETTINGS.hint.pct,g.pct||{},mode==='pct'&&own.mode==='pct'?own.pct:{}), hp:own.hp||null, manual:own.manual||'unhurt', own:!!own.mode&&own.mode!=='default'}; }
 function healthHint(c){
-  if(c.hp<=0) return 'down';
+  if(c.hp<=0){ if(c.kind!=='pc') return 'dead'; return (c.deathF||0)>=3?'dead':(c.deathS||0)>=3?'stable':'dying'; }
   const h=hintCfg(c);
   if(h.mode==='hidden') return 'unknown';
   if(h.mode==='manual') return h.manual;
   let v,T; if(h.mode==='hp'&&h.hp){ v=c.hp; T=h.hp; } else { v=100*c.hp/Math.max(1,c.maxHp); T=h.pct; }
   return v<T.critical?'critical':v<T.heavy?'heavy':v<T.damaged?'damaged':'unhurt';
 }
+// 'alive' | 'dying' | 'stable' | 'dead' — works on the full state and on a player's redacted view
+function lifeOf(c){
+  if(!c) return 'alive'; const st=c.status;
+  if(st==='dead'||st==='dying'||st==='stable') return st;
+  if(c.hp==null) return st==='down'?(c.kind==='pc'?'dying':'dead'):'alive';
+  if(c.hp>0) return 'alive'; if(c.kind!=='pc') return 'dead';
+  return (c.deathF||0)>=3?'dead':(c.deathS||0)>=3?'stable':'dying';
+}
+const isDead=c=>lifeOf(c)==='dead';
 function freshGrid(){ return {on:false,cols:24,rows:16,cell:48,bg:null,tiles:{},fog:{}}; }
 function freshState(){ return {v:2,combatants:[],round:0,turn:0,started:false,log:[],pack:[],custom:[],seats:[],requests:[],settings:Object.assign({},DEF_SETTINGS),grid:freshGrid(),turnStartedAt:0,timerFired:false}; }
 let S=freshState();
@@ -9929,21 +9977,23 @@ const NET={
 // ---------------- lookups ----------------
 const cById=id=>S.combatants.find(x=>x.id===id);
 const seatOf=id=>S.seats.find(x=>x.id===id);
-const current=()=>!S.started?null:(NET.mode==='client'?(S.currentId?cById(S.currentId)||null:null):S.combatants[S.turn]);
+const current=()=>!S.started?null:(NET.mode==='client'?(S.currentId?cById(S.currentId)||null:null):(S.extra&&cById(S.extra.id))||S.combatants[S.turn]);
 const hasCond=(c,k)=>(c.conditions||[]).includes(k);
 const INCAP=['Incapacitated','Paralyzed','Petrified','Stunned','Unconscious'];
 const incapacitated=c=>c.hp<=0||(c.conditions||[]).some(x=>INCAP.includes(x));
+function sizeRank(c){ const s=String(c.sizeType||'').toLowerCase(); return /tiny/.test(s)?0:/small/.test(s)?1:/gargantuan/.test(s)?5:/huge/.test(s)?4:/large/.test(s)?3:2; }
 function sizeCells(c){ const s=String(c.sizeType||'').toLowerCase(); return /gargantuan/.test(s)?4:/huge/.test(s)?3:/large/.test(s)?2:1; }
-function speedFt(c){ let n=parseInt(c.speed,10); if(isNaN(n)) n=30; if(hasCond(c,'Grappled')||hasCond(c,'Restrained')||hasCond(c,'Paralyzed')||hasCond(c,'Stunned')||hasCond(c,'Unconscious')||hasCond(c,'Petrified')) n=0; return Math.max(0,n); }
+function speedFt(c){ let n=parseInt(c.speed,10); if(isNaN(n)) n=30; n+=(+c.speedBonus||0); if(hasFx(c,'haste')) n*=2; if(hasFx(c,'slow')) n=Math.floor(n/10)*5; if(hasCond(c,'Grappled')||hasCond(c,'Restrained')||hasCond(c,'Paralyzed')||hasCond(c,'Stunned')||hasCond(c,'Unconscious')||hasCond(c,'Petrified')) n=0; return Math.max(0,n); }
 function controls(actor,c){
   if(actor==='dm') return true;
   const s=seatOf(actor); if(!s||!c) return false;
   return s.controls.includes(c.id)||(!!c.owner&&s.controls.includes(c.owner));
 }
+const hasFx=(c,k)=>(c.effects||[]).some(e=>e[k]);
 const teamOf=c=>c.team||(c.kind==='pc'||c.kind==='companion'?'party':'enemy');
 
 // ---------------- action economy ----------------
-function freshEco(c){ const m=speedFt(c); return {action:1,bonus:1,reaction:(c.eco&&c.eco.reaction!=null&&!S.started)?1:1,move:m,moveMax:m,attacks:0,dodging:false,disengaged:false,sneakUsed:false,castBonusSpell:false}; }
+function freshEco(c){ const m=speedFt(c); return {action:1,bonus:1,reaction:hasFx(c,'slow')?0:1,move:m,moveMax:m,attacks:0,dodging:false,disengaged:false,sneakUsed:false,haste:hasFx(c,'haste')?1:0,spells:[],tookAttack:false,cantripAction:false,surged:false,ambush:0}; }
 function eco(c){ if(!c.eco) c.eco=freshEco(c); return c.eco; }
 // What an intent costs. as: 'action' | 'bonus' | 'reaction' | 'free'
 function costOf(it,c){
@@ -9955,22 +10005,36 @@ function costOf(it,c){
     case 'feature': return it.as==='bonus'?{bonus:1}:it.as==='reaction'?{reaction:1}:it.as==='free'?{}:{action:1};
     case 'ability': return {action:1};
     case 'move': return {move:it.cost||0};
+    case 'stand': return {move:Math.ceil(eco(c).moveMax/2)};
     default: return {};
   }
 }
 function economyCheck(c,it){
   const k=costOf(it,c), e=eco(c);
   if((k.action||k.bonus||k.reaction||k.attack)&&incapacitated(c)) return c.name+' can’t act (incapacitated)';
-  if(k.action&&e.action<1) return 'No action left this turn';
+  if(k.action&&e.action<1&&!(e.haste>0&&hasteOk(it))) return e.haste>0?'Your hasted action can only Attack (one attack), Dash, Disengage, Hide or Use an Object':'No action left this turn';
+  if(it.t==='cast'&&it.as!=='reaction'){ const why=spellRuleWhy(e,it.as==='bonus'||it.quick?'bonus':'action',+it.slot||0); if(why) return why; }
   if(k.bonus&&e.bonus<1) return 'No bonus action left this turn';
   if(k.reaction&&e.reaction<1) return 'Reaction already used';
   if(k.attack&&e.attacks<1) return 'No attacks left';
   if(k.move&&k.move>e.move) return 'Not enough movement ('+e.move+' ft left)';
   return '';
 }
+// a hasted creature's extra action: one weapon attack, Dash, Disengage, Hide or Use an Object
+function hasteOk(it){ return (it.t==='attack'&&it.as!=='bonus')||(it.t==='std'&&['dash','disengage','hide','object'].includes(it.which))||(it.t==='feature'&&it.key==='fastHands'); }
+// PHB: cast a bonus-action spell and the only other spell that turn is a cantrip cast as an action
+function spellRuleWhy(e,as,lvl){
+  const prev=e.spells||[];
+  if(as==='bonus'&&prev.some(p=>p.as!=='reaction'&&!(p.as==='action'&&p.lvl===0))) return 'After casting a levelled spell this turn, you can’t also cast a bonus-action spell';
+  if(as==='action'&&lvl>0&&prev.some(p=>p.as==='bonus')) return 'You cast a bonus-action spell this turn — your action can only be a cantrip';
+  return '';
+}
 function payCost(c,it){
   const k=costOf(it,c), e=eco(c);
-  if(k.action){ e.action=Math.max(0,e.action-1); if(it.t==='attack') e.attacks=Math.max(0,(c.attacksPerAction||1)-1); }
+  if(k.action){
+    if(e.action<1&&e.haste>0){ e.haste=0; if(it.t==='attack') e.attacks=0; }      // the hasted action: a single attack
+    else { e.action=Math.max(0,e.action-1); if(it.t==='attack'){ e.attacks=Math.max(0,(c.attacksPerAction||1)-1); e.tookAttack=true; if(e.ambush>0){ e.attacks++; e.ambush=0; log('🌑 '+esc(c.name)+' — <b>Dread Ambusher</b>: one extra attack this turn (+1d8 on it)'); } } }
+  }
   if(k.bonus) e.bonus=Math.max(0,e.bonus-1);
   if(k.reaction) e.reaction=Math.max(0,e.reaction-1);
   if(k.attack) e.attacks=Math.max(0,e.attacks-1);
@@ -9981,9 +10045,10 @@ function payCost(c,it){
 const DM_ONLY=new Set(['add','remove','clear','initRoll','initSet','startCombat','nextTurn','tile','fogPaint','fogAll','gridCfg','gridBg','placeToken','setHidden','settings','seatAdd','seatRemove','claimResolve','loadEnc','dmPatch','packLoad','customSave','rename','stopCombat','sortInit','assign','loadPrep','notes','recharge']);
 function permit(it,actor){
   if(PREP&&['startCombat','nextTurn','endTurn','claimReq','claimResolve','assign','seatAdd','loadPrep','loadEnc'].includes(it.t)) return 'You’re editing a prep — save or close it first';
-  if(actor==='dm') return '';
+  if(actor==='dm') return (it.t==='undo'||it.t==='redo')?undoWhy(actor,it.t==='redo'):'';
   const s=seatOf(actor); if(!s) return 'Unknown player seat';
   if(it.t==='claimReq'||it.t==='release'||it.t==='roll'||it.t==='seatName') return '';
+  if(it.t==='undo'||it.t==='redo') return undoWhy(actor,it.t==='redo');
   if(DM_ONLY.has(it.t)) return 'Only the DM can do that';
   const c=cById(it.cid); if(!c) return 'No such combatant';
   if(!controls(actor,c)) return 'You don’t control '+c.name;
@@ -10006,7 +10071,11 @@ const Host={
   handle(it,actor){
     const why=permit(it,actor);
     if(why) return {ok:false,why};
-    try{ resolve(it,actor); }catch(err){ if(err.constructor!==Error){ console.error(err); return {ok:false,why:'Bug: '+err.message}; } return {ok:false,why:err.message}; }
+    if(it.t==='undo'||it.t==='redo'){ doUndo(actor,it.t==='redo'); STATE_VER++; commit(); return {ok:true}; }
+    const rec=undoable(it)?{before:snap(),label:intentLabel(it),actor,turn:S.turnSeq||0,rolls:ROLLS}:null;
+    try{ resolve(it,actor); }catch(err){ if(rec&&snap().json!==rec.before.json) restore(rec.before,true);   // roll back only a half-applied action
+      if(err.constructor!==Error){ console.error(err); return {ok:false,why:'Bug: '+err.message}; } return {ok:false,why:err.message}; }
+    if(rec){ rec.dice=ROLLS!==rec.rolls; delete rec.rolls; undoPush(rec); }
     STATE_VER++;
     if(S.settings.autoReveal&&it.t!=='fogPaint') revealVision();
     commit(); return {ok:true};
@@ -10018,6 +10087,69 @@ const Host={
     STATE_VER++; return {ok:true};
   }
 };
+// ---------------- undo / redo ----------------
+// Whole-state snapshots (the battle map image, monster packs and token pictures are kept by reference, not copied).
+// The DM can step back through anything, across turns. A player can take back their own last action until they end their turn.
+const UNDO={stack:[],redo:[],max:60};
+const NO_UNDO=new Set(['notes','seatName','seatAdd','seatRemove','claimReq','claimResolve','assign','release','packLoad','customSave','gridBg','roll']);
+const undoable=it=>NET.mode!=='client'&&!NO_UNDO.has(it.t);
+function snap(){
+  const keep={bg:S.grid.bg,pack:S.pack,custom:S.custom,imgs:{}}, G=S.grid;
+  const json=JSON.stringify(S,function(k,v){ if(this===G&&k==='bg') return undefined; if(this===S&&(k==='pack'||k==='custom')) return undefined; if(k==='img'&&typeof v==='string'&&v.length>300&&this.id){ keep.imgs[this.id]=v; return undefined; } return v; });
+  keep.json=json; keep.sheets={};
+  if(inSuite()) S.combatants.forEach(c=>{ if(c.kind!=='pc'||!c.ref||keep.sheets[c.ref]) return; try{ const pc=parent.SUITE.getCharacter(c.ref); if(pc) keep.sheets[c.ref]=JSON.parse(JSON.stringify({slotsUsed:pc.slotsUsed||[],resUsed:pc.resUsed||{},raging:!!pc.raging,curHp:pc.curHp,tempHp:pc.tempHp||0,deathS:pc.deathS||0,deathF:pc.deathF||0})); }catch(e){} });
+  return keep;
+}
+function restore(sn,quiet){
+  S=JSON.parse(sn.json); S.grid.bg=sn.bg; S.pack=sn.pack; S.custom=sn.custom;
+  S.combatants.forEach(c=>{ if(sn.imgs[c.id]) c.img=sn.imgs[c.id]; });
+  if(!quiet&&inSuite()) Object.keys(sn.sheets||{}).forEach(ref=>{ try{ parent.SUITE.patchCharacter(ref,JSON.parse(JSON.stringify(sn.sheets[ref]))); }catch(e){} });
+}
+function undoPush(rec){ UNDO.stack.push(rec); if(UNDO.stack.length>UNDO.max) UNDO.stack.shift(); UNDO.redo=[]; }
+function undoClear(){ UNDO.stack=[]; UNDO.redo=[]; }
+function undoWhy(actor,redo){
+  if(NET.mode==='client') return '';
+  const st=redo?UNDO.redo:UNDO.stack, top=st[st.length-1];
+  if(!top) return redo?'Nothing to redo':'Nothing to undo';
+  if(actor==='dm') return '';
+  const mode=S.settings.playerUndo||'safe';
+  if(mode==='off') return 'The DM has turned off undo for players';
+  if(top.actor!==actor) return redo?'Nothing of yours to redo':'Your last action isn’t the latest thing that happened — ask the DM';
+  if(top.turn!==(S.turnSeq||0)) return 'That was on an earlier turn — ask the DM';
+  if(!redo&&mode==='safe'&&top.dice) return 'That action rolled dice — ask the DM to undo it';
+  return '';
+}
+function doUndo(actor,redo){
+  const from=redo?UNDO.redo:UNDO.stack, to=redo?UNDO.stack:UNDO.redo, rec=from.pop();
+  const now=snap(); restore(redo?rec.after:rec.before);
+  to.push(redo?Object.assign({},rec,{before:now}):Object.assign({},rec,{after:now}));
+  UI.pending=null; UI.aim=null; if(UI.selected&&!cById(UI.selected)) UI.selected=null;
+  log((redo?'↷ ':'↶ ')+esc(who(actor))+(redo?' redid ':' undid ')+esc(rec.label),'undo');
+}
+function undoInfo(actor){
+  if(NET.mode==='client') return S.undo||{};
+  const u=UNDO.stack[UNDO.stack.length-1], r=UNDO.redo[UNDO.redo.length-1];
+  return {u:!undoWhy(actor,false),r:!undoWhy(actor,true),ul:u?u.label:'',rl:r?r.label:'',uw:undoWhy(actor,false),off:actor!=='dm'&&(S.settings.playerUndo||'safe')==='off'};
+}
+function intentLabel(it){
+  const c=it.cid&&cById(it.cid), n=c?c.name:'';
+  switch(it.t){
+    case 'move': return n+'’s move'; case 'stand': return n+' standing up';
+    case 'attack': return n+'’s attack ('+(((typeof attacksOf==='function'&&c?attacksOf(c):[])[it.idx])||{}).name+')';
+    case 'cast': return n+' casting '+it.spell; case 'ability': return n+'’s '+(((c&&c.actions)||[])[it.idx]||{}).name;
+    case 'std': return n+'’s '+it.which; case 'feature': return n+'’s '+((FEATURES[it.key]||{}).label||it.key);
+    case 'nextTurn': case 'endTurn': { const cur=current(); return 'the end of '+(cur?cur.name+'’s':'the')+' turn'; }
+    case 'startCombat': return 'starting combat'; case 'stopCombat': return 'ending combat';
+    case 'tile': case 'fogPaint': return 'map painting'; case 'fogAll': return it.on?'fog all':'reveal all';
+    case 'door': return (n||'DM')+' and a door'; case 'placeToken': return 'placing '+n;
+    case 'hp': case 'hpSelf': return (it.amount>0?'damage to ':'healing ')+n;
+    case 'add': return 'adding '+((it.combatant||{}).name||'a combatant'); case 'remove': return 'removing '+n;
+    case 'cond': return n+' '+it.cond; case 'death': case 'deathRoll': return n+'’s death save';
+    case 'initRoll': case 'initSet': case 'initSelf': return 'initiative'; case 'clear': return 'clearing the encounter';
+    case 'loadPrep': return 'setting up a prep'; case 'dmPatch': return 'editing '+n; case 'settings': return 'a settings change';
+    default: return it.t+(n?' ('+n+')':'');
+  }
+}
 function send(it){
   if(NET.mode==='client'){ if(!NETX.ws||NETX.ws.readyState!==1){ toast('Not connected to the table'); return {ok:false,why:'offline'}; } wsSend({t:'intent',it}); return {ok:true}; }
   const r=Host.handle(it,UI.viewAs); if(!r.ok) toast(r.why); return r; }
@@ -10043,7 +10175,7 @@ function redact(src,seatId){
   if(V.grid.on&&lightOn()){ const vis=partyVision(); V.vis=[...vis];
     V.combatants=V.combatants.filter(c=>mine(c)||teamOf(c)==='party'||!c.pos||footprint(c).some(k=>vis.has(k))); }
   // turn pointer stays meaningful after hidden combatants are dropped
-  const cur=src.started?src.combatants[src.turn]:null;
+  const cur=src.started?((src.extra&&src.combatants.find(c=>c.id===src.extra.id))||src.combatants[src.turn]):null;
   V.turn=cur?Math.max(0,V.combatants.findIndex(c=>c.id===cur.id)):0;
   V.currentId=cur&&!cur.hidden?cur.id:null;
   V.log=V.log.filter(l=>l.vis==='all'||(seat&&l.by===seat.id)).map(l=>Object.assign({},l,{text:String(l.text).replace(/<span data-dm>[^<]*<\/span>/g,'')}));   // ACs and such stay with the DM
@@ -10053,7 +10185,7 @@ function redact(src,seatId){
   V.pack=[]; V.custom=[];
   // tiles under fog stay secret; fog itself is sent so the client can paint it
   Object.keys(V.grid.tiles).forEach(k=>{ if(fogged(k)||V.grid.tiles[k].t==='start') delete V.grid.tiles[k]; });
-  delete V.activePrep;
+  delete V.activePrep; V.undo=src===S?undoInfo(seatId):{};
   V.you=seat?{id:seat.id,name:seat.name,controls:seat.controls.slice()}:null;
   // a remote client has no character sheets: ship the live kit (spells, slots, resources) for what this seat controls
   V.kits={}; V.combatants.forEach(c=>{ if(mine(c)){ const full=src.combatants.find(x=>x.id===c.id); const k=full&&kit(full); if(k) V.kits[c.id]=k; } });
@@ -10159,6 +10291,15 @@ function mkFromPC(pc){
 // ---------------- the party's live kit (spells, slots, resources) straight from the sheet ----------------
 const inSuite=()=>{ try{ return window.parent!==window&&!!window.parent.SUITE; }catch(e){ return false; } };
 function kit(c){ if(c&&NET.mode==='client') return (NET.kits||{})[c.id]||null; if(!c||c.kind!=='pc'||!c.ref||!inSuite()) return null; try{ return parent.SUITE.castInfo(c.ref); }catch(e){ return null; } }
+// speed from class features, only when the sheet still shows the race's base speed (so a hand-edited speed is never counted twice)
+function classSpeedBonus(k){
+  if(!k||(k.raceSpeed&&+k.speed!==+k.raceSpeed)) return 0; const L=k.level;
+  if(k.klass==='Monk') return L>=18?30:L>=14?25:L>=10?20:L>=6?15:L>=2?10:0;
+  if(k.klass==='Barbarian') return L>=5?10:0;
+  return 0;
+}
+function pcClassSync(c,k){ if(!k) return; c.attacksPerAction=pcAttacksPerAction(k); c.level=k.level; c.klass=k.klass; c.subclass=k.subclass||''; c.speedBonus=classSpeedBonus(k);
+  c.reflexes=k.klass==='Rogue'&&k.subclass==='Thief'&&k.level>=17; }
 function pcAttacksPerAction(k){
   if(!k) return 1; const L=k.level, cl=k.klass;
   if(cl==='Fighter') return L>=20?4:L>=11?3:L>=5?2:1;
@@ -10304,7 +10445,12 @@ const SPELL_OVR={
   'Booming Blade':{manual:true},'Green-Flame Blade':{manual:true},'Cordon of Arrows':{manual:true},'Dust Devil':{manual:true},'Flame Arrows':{manual:true},
   'Life Transference':{manual:true},'Dream':{manual:true},'Geas':{manual:true},'Blade of Disaster':{manual:true},'Prismatic Spray':{manual:true},
   'Counterspell':{cast:'reaction'},'Absorb Elements':{cast:'reaction',self:true},'Hellish Rebuke':{cast:'reaction',targets:1,save:'dex',dmg:'2d10',type:'fire',half:true,range:60},
-  'Feather Fall':{cast:'reaction'},'Silvery Barbs':{cast:'reaction'},
+  'Feather Fall':{cast:'reaction'},
+  'Haste':{targets:1,friendly:true,range:30,conc:true,save:null,dmg:null,dmgs:[],effect:{name:'Hasted',ac:2,haste:true}},
+  'Slow':{area:{shape:'cube',size:40},range:120,conc:true,save:'wis',half:false,dmg:null,dmgs:[],effect:{name:'Slowed',ac:-2,slow:true}},
+  'Revivify':{revive:1,targets:1,range:5,save:null,dmg:null,dmgs:[],heal:null},'Raise Dead':{revive:1,targets:1,range:5,save:null,dmg:null,dmgs:[],heal:null},
+  'Resurrection':{revive:'full',targets:1,range:5,save:null,dmg:null,dmgs:[],heal:null},'True Resurrection':{revive:'full',targets:1,range:5,save:null,dmg:null,dmgs:[],heal:null},
+  'Reincarnate':{revive:'full',targets:1,range:5,save:null,dmg:null,dmgs:[],heal:null},'Silvery Barbs':{cast:'reaction'},
   'Healing Spirit':{cast:'bonus'},'Expeditious Retreat':{cast:'bonus',self:true},'Sanctuary':{cast:'bonus',targets:1,friendly:true,effect:{name:'Sanctuary'}},
   'Shillelagh':{cast:'bonus',self:true},'Magic Weapon':{cast:'bonus'},'Divine Favor':{cast:'bonus',self:true,effect:{name:'Divine Favor',rider:'1d4 radiant'}},
   'Searing Smite':{cast:'bonus',self:true},'Thunderous Smite':{cast:'bonus',self:true},'Wrathful Smite':{cast:'bonus',self:true},'Branding Smite':{cast:'bonus',self:true},
@@ -10385,11 +10531,14 @@ function dealDamage(t,n,type,src){
   const wasDown=t.hp<=0, hpBefore=t.hp;
   const soak=Math.min(t.tempHp||0,n); t.tempHp=(t.tempHp||0)-soak; const rest=n-soak;
   t.hp=Math.max(0,t.hp-rest);
-  if(t.kind==='pc'&&wasDown&&rest>0){ t.deathF=Math.min(3,(t.deathF||0)+(src&&src.crit?2:1)); log('<b>'+esc(t.name)+'</b> takes damage at 0 HP — '+(src&&src.crit?'two death save failures':'a death save failure'),'dmg'); if(t.deathF>=3) log('<b>'+esc(t.name)+'</b> has died','dmg'); }
+  if(t.kind==='pc'&&wasDown&&rest>0&&(t.deathF||0)<3){
+    const wasStable=(t.deathS||0)>=3; if(wasStable) t.deathS=0;
+    t.deathF=Math.min(3,(t.deathF||0)+(src&&src.crit?2:1)); log('<b>'+esc(t.name)+'</b> takes damage at 0 HP'+(wasStable?' and is no longer stable':'')+' — '+(src&&src.crit?'two death save failures':'a death save failure'),'dmg'); if(t.deathF>=3) log('☠ <b>'+esc(t.name)+'</b> has died','death'); }
   else if(t.hp<=0&&!wasDown){
-    if(t.kind==='pc'&&rest-hpBefore>=t.maxHp){ log('<b>'+esc(t.name)+'</b> is killed outright by massive damage','dmg'); t.deathF=3; }
+    if(t.kind==='pc'&&rest-hpBefore>=t.maxHp){ log('☠ <b>'+esc(t.name)+'</b> is killed outright by massive damage','death'); t.deathF=3; }
     if(t.kind==='pc'&&!hasCond(t,'Unconscious')) t.conditions.push('Unconscious');
-    log('<b>'+esc(t.name)+'</b> drops to 0 HP','dmg');
+    if(t.kind==='pc'){ if(t.deathF<3) log('💀 <b>'+esc(t.name)+'</b> drops to 0 HP and is <b>dying</b>','death'); }
+    else log('☠ <b>'+esc(t.name)+'</b> dies','death');
     if(t.conc) dropConc(t,'drops to 0 HP');
   } else if(t.conc&&rest>0){
     const dc=Math.max(10,Math.floor(rest/2)); const sv=rollSave(t,'con');
@@ -10398,7 +10547,9 @@ function dealDamage(t,n,type,src){
   }
   syncPC(t); return n;
 }
-function healTo(t,n){ n=Math.max(0,Math.round(n)); const before=t.hp; t.hp=Math.min(t.maxHp,t.hp+n); if(t.hp>0){ t.deathS=0; t.deathF=0; t.conditions=t.conditions.filter(x=>x!=='Unconscious'||t.kind!=='pc'); } syncPC(t); return t.hp-before; }
+function healTo(t,n,force){ n=Math.max(0,Math.round(n)); const before=t.hp;
+  if(!force&&isDead(t)){ log(esc(t.name)+' is dead — healing does nothing (Revivify and the like can bring them back)'); return 0; }
+  if(force&&t.kind==='pc'&&isDead(t)&&n>0){ t.deathF=0; t.deathS=0; } t.hp=Math.min(t.maxHp,t.hp+n); if(t.hp>0){ t.deathS=0; t.deathF=0; t.conditions=t.conditions.filter(x=>x!=='Unconscious'||t.kind!=='pc'); } syncPC(t); return t.hp-before; }
 function saveBonus(t,abil){ const k=kit(t); if(k&&k.saves) return k.saves[abil]||0; return mod((t.abilities||[])[ABIL.indexOf(abil)]); }
 function rollSave(t,abil){
   if((abil==='str'||abil==='dex')&&['Paralyzed','Stunned','Unconscious','Petrified'].some(k=>hasCond(t,k))) return {total:-99,txt:'auto-fail',auto:true};
@@ -10420,20 +10571,31 @@ function dropConc(c,why){
 }
 
 // ---------------- turns ----------------
-function beginTurn(c){
+function beginTurn(c,second){
   if(!c) return;
+  S.turnSeq=(S.turnSeq||0)+1;
   c.eco=freshEco(c);
+  if(S.round===1&&!second&&c.kind==='pc'&&c.klass==='Ranger'&&c.subclass==='Gloom Stalker'&&(c.level||0)>=3&&c.hp>0){ c.eco.move+=10; c.eco.moveMax+=10; c.eco.ambush=1; log('🌑 '+esc(c.name)+' — <b>Dread Ambusher</b>: +10 ft speed this turn and an extra attack with the Attack action'); }
   if(c.spent&&Object.keys(c.spent).length){ const list=(c.actions||[]); Object.keys(c.spent).forEach(i=>{ const note=String((list[i]||{}).note||''), rc=/recharge\s*(\d)/i.exec(note); const r=d(6);
       if(!rc||r>=+rc[1]){ delete c.spent[i]; log('↻ '+esc(c.name)+'’s '+esc((list[i]||{}).name||'ability')+' recharges ('+r+')','','dm'); } else log(esc(c.name)+'’s '+esc((list[i]||{}).name||'ability')+' doesn’t recharge ('+r+')','','dm'); }); }
   S.combatants.forEach(t=>(t.effects||[]).filter(e=>e.until==='startOfTurn'&&e.by===c.id).forEach(e=>removeEffect(t,e)));
   S.turnStartedAt=Date.now(); S.timerFired=false;
-  log(esc(c.name)+' is up'+(c.kind==='pc'&&c.hp<=0?' — <b>death save</b> time':''));
+  const life=lifeOf(c);
+  if(life==='dying') log('💀 <b>'+esc(c.name)+'</b> is dying — roll a <b>death save</b>','death');
+  else log(esc(c.name)+(second?' takes a second turn (<b>Thief’s Reflexes</b>)':' is up'));
 }
+// skip the dead, and stable characters (they're unconscious and have nothing to do)
+const skipTurn=c=>!c||isDead(c)||lifeOf(c)==='stable';
 function advanceTurn(){
   if(!S.combatants.length) return;
+  S.extra=null;
+  // Thief's Reflexes (rogue 17): a second turn in the first round, at initiative − 10
+  if(S.round===1){ const nx=S.combatants[S.turn+1], nxInit=nx&&hasInit(nx)?+nx.init:-Infinity;
+    const th=S.combatants.find(c=>c.reflexes&&!c.reflexUsed&&hasInit(c)&&!skipTurn(c)&&S.combatants.indexOf(c)<=S.turn&&+c.init-10>nxInit);
+    if(th){ th.reflexUsed=true; S.extra={id:th.id}; beginTurn(th,true); return; } }
   let t=S.turn, r=S.round, guard=0;
   do{ t++; if(t>=S.combatants.length){ t=0; r++; log('<b>Round '+r+'</b>'); } guard++; }
-  while(guard<=S.combatants.length&&(()=>{ const c=S.combatants[t]; return c&&c.kind!=='pc'&&c.hp<=0; })());
+  while(guard<=S.combatants.length&&skipTurn(S.combatants[t]));
   S.turn=t; S.round=r; beginTurn(S.combatants[t]);
 }
 const hasInit=c=>c.init!=null&&c.init!=='';
@@ -10453,6 +10615,12 @@ const FEATURES={
   loh:{label:'Lay on Hands',as:'action',target:true,amount:true,tip:'Heal from your pool (touch)'},
   ki:{label:'Ki',as:'bonus',ki:true,tip:'Flurry of Blows, Patient Defense, Step of the Wind'},
   ws:{label:'Wild Shape',as:'action',tip:'Transform (bonus action for Circle of the Moon)'},
+  warpriest:{label:'War Priest attack',as:'bonus',tip:'After the Attack action: one weapon attack as a bonus action'},
+  fastHands:{label:'Fast Hands',as:'bonus',tip:'Thief: Use an Object, Sleight of Hand or thieves’ tools as a bonus action'},
+  martial:{label:'Martial Arts strike',as:'bonus',tip:'After the Attack action: one unarmed strike as a bonus action'},
+  frenzy:{label:'Frenzy attack',as:'bonus',tip:'Berserker in a frenzy: one melee weapon attack as a bonus action'},
+  warMagic:{label:'War Magic attack',as:'bonus',tip:'Eldritch Knight: after casting a cantrip, one weapon attack as a bonus action'},
+  steady:{label:'Steady Aim',as:'bonus',tip:'Advantage on your next attack this turn; your speed becomes 0 (only if you haven’t moved)'},
 };
 function sneakDice(k){ return k&&k.klass==='Rogue'?Math.ceil(k.level/2)+'d6':''; }
 
@@ -10479,8 +10647,9 @@ function resolve(it,actor){
   case 'sortInit': sortInit(); break;
   case 'startCombat':
     if(S.combatants.some(x=>!hasInit(x))){ S.combatants.filter(x=>!hasInit(x)).forEach(x=>x.init=d(20)+(x.initMod||0)); sortInit(); }
-    S.started=true; S.round=1; S.turn=0; S.combatants.forEach(x=>x.eco=freshEco(x)); log('<b>Round 1</b> — combat begins'); beginTurn(S.combatants[0]); break;
-  case 'stopCombat': S.started=false; S.round=0; S.turn=0; log('Combat ends'); break;
+    S.started=true; S.round=1; S.turn=0; S.extra=null; S.combatants.forEach(x=>{ x.eco=freshEco(x); x.reflexUsed=false; if(x.kind==='pc'){ const k=kit(x); if(k) pcClassSync(x,k); } }); log('<b>Round 1</b> — combat begins');
+    { let i=0; while(i<S.combatants.length-1&&skipTurn(S.combatants[i])) i++; S.turn=i; } beginTurn(S.combatants[S.turn]); break;
+  case 'stopCombat': S.started=false; S.round=0; S.turn=0; S.extra=null; log('Combat ends'); break;
   case 'nextTurn': advanceTurn(); break;
   case 'endTurn': if(current()&&current().id===it.cid) advanceTurn(); break;
   case 'dmPatch': if(c){ Object.assign(c,it.set); if('speed' in it.set&&c.eco){ c.eco.moveMax=speedFt(c); } syncPC(c); } break;
@@ -10510,22 +10679,27 @@ function resolve(it,actor){
   case 'assign': { const s=seatOf(it.sid), t=cById(it.cid); if(!s||!t) break; S.seats.forEach(x=>x.controls=x.controls.filter(id=>id!==t.id)); s.controls.push(t.id); S.requests=S.requests.filter(r=>r.cid!==t.id); log(esc(s.name)+' now controls <b>'+esc(t.name)+'</b>'); break; }
   case 'release': { const s=actor==='dm'?S.seats.find(x=>x.controls.includes(it.cid)):seatOf(actor); if(s){ s.controls=s.controls.filter(x=>x!==it.cid); log(esc(s.name)+' releases '+esc((cById(it.cid)||{}).name||'')); } break; }
   // ----- bookkeeping on a combatant -----
-  case 'hp': case 'hpSelf': { if(!c) break; if(it.amount>0){ const n=dealDamage(c,it.amount,it.type||'',{}); log(esc(c.name)+' took <b>'+n+'</b> damage','dmg'); } else { const n=healTo(c,-it.amount); log(esc(c.name)+' healed <b>'+n+'</b>','heal'); } break; }
+  case 'hp': case 'hpSelf': { if(!c) break; if(it.amount>0){ const n=dealDamage(c,it.amount,it.type||'',{}); log(esc(c.name)+' took <b>'+n+'</b> damage','dmg'); } else { const was=isDead(c), n=healTo(c,-it.amount,it.t==='hp'); if(n||!was) log(esc(c.name)+' healed <b>'+n+'</b>'+(was&&n?' — back from the dead':''),'heal'); } break; }
   case 'temp': if(c){ c.tempHp=Math.max(c.tempHp||0,it.amount); syncPC(c); log(esc(c.name)+' gained <b>'+it.amount+'</b> temp HP','heal'); } break;
   case 'cond': if(c){ const i=c.conditions.indexOf(it.cond); if(i>=0) c.conditions.splice(i,1); else c.conditions.push(it.cond); log(esc(c.name)+(i>=0?' is no longer ':' is now ')+'<b>'+esc(it.cond)+'</b>'); if(c.eco&&!S.started) c.eco=freshEco(c); } break;
   case 'conc': if(c){ if(it.on){ if(c.conc) dropConc(c,'new spell'); c.conc={spell:it.spell||''}; log(esc(c.name)+' is concentrating'+(it.spell?' on <b>'+esc(it.spell)+'</b>':'')); } else dropConc(c,''); } break;
-  case 'death': if(c){ c[it.which]=it.value; if(c.deathS>=3) log('<b>'+esc(c.name)+'</b> is stable'); if(c.deathF>=3) log('<b>'+esc(c.name)+'</b> has died','dmg'); syncPC(c); } break;
-  case 'deathRoll': if(c){ const r=d(20);
+  case 'death': if(c){ c[it.which]=it.value; if(c.deathF>=3) log('☠ <b>'+esc(c.name)+'</b> has died','death'); else if(c.deathS>=3) log('<b>'+esc(c.name)+'</b> is stable'); syncPC(c); } break;
+  case 'deathRoll': if(c){ const L=lifeOf(c); if(L!=='dying') throw new Error(L==='dead'?c.name+' is dead':L==='stable'?c.name+' is stable — no more death saves':c.name+' isn’t dying');
+    if(S.started&&actor!=='dm'&&current()&&current().id===c.id){ if(eco(c).deathRolled) throw new Error('One death save per turn'); eco(c).deathRolled=true; }
+    const r=d(20);
     if(r===20){ healTo(c,1); log(esc(c.name)+' rolled a <b>20</b> — back up with 1 HP','heal'); }
     else if(r===1){ c.deathF=Math.min(3,c.deathF+2); log(esc(c.name)+' rolled a <b>1</b> — two failures','dmg'); }
     else if(r>=10){ c.deathS=Math.min(3,c.deathS+1); log(esc(c.name)+' death save: <b>'+r+'</b> — success'); }
     else { c.deathF=Math.min(3,c.deathF+1); log(esc(c.name)+' death save: <b>'+r+'</b> — failure','dmg'); }
-    if(c.deathF>=3) log('<b>'+esc(c.name)+'</b> has died','dmg'); else if(c.deathS>=3&&c.hp<=0) log('<b>'+esc(c.name)+'</b> is stable');
+    if(c.deathF>=3) log('☠ <b>'+esc(c.name)+'</b> has died','death'); else if(c.deathS>=3&&c.hp<=0) log('<b>'+esc(c.name)+'</b> is <b>stable</b> — unconscious, but no longer dying');
     syncPC(c); } break;
   case 'notes': if(c) c.notes=it.text; break;
   case 'roll': { it.expr=String(it.expr||'').slice(0,80); it.label=it.label?String(it.label).slice(0,40):''; const r=rollDice(it.expr); if(!r) throw new Error('Could not read “'+it.expr+'”'); log(esc(who(actor))+(it.label?' · '+esc(it.label):'')+' rolls '+r.detail+' = <b>'+r.total+'</b>'+(it.private?' <i>(to DM)</i>':''),'',it.private?'dm':'all',actor); break; }
   // ----- combat actions -----
   case 'move': resolveMove(c,it,actor); break;
+  case 'stand': { if(!c||!hasCond(c,'Prone')) throw new Error('Not prone'); const e=eco(c), cost=Math.ceil(e.moveMax/2);
+    if(S.started){ if(e.moveMax<=0) throw new Error('Speed 0 — can’t stand up'); if(e.move<cost&&actor!=='dm'&&S.settings.enforce) throw new Error('Standing up takes '+cost+' ft of movement'); e.move=Math.max(0,e.move-cost); }
+    c.conditions=c.conditions.filter(x=>x!=='Prone'); c.effects=(c.effects||[]).filter(x=>x.cond!=='Prone'); log(esc(c.name)+' stands up'+(S.started?' ('+cost+' ft)':'')); break; }
   case 'std': resolveStd(c,it); break;
   case 'attack': hostReachCheck(c,it,actor); resolveAttack(c,it); break;
   case 'cast': hostReachCheck(c,it,actor); resolveCast(c,it); break;
@@ -10650,11 +10824,17 @@ function resolveCast(c,it){
   if(meta.self) targets=[{c,name:c.name,ac:acOf(c)}];
   if(!targets.length&&meta.needsTarget&&!(meta.area&&S.grid.on&&it.area)) throw new Error('Pick a target');
   if((meta.targets||0)>0&&!meta.area&&!meta.darts&&targets.length>meta.targets) throw new Error('Up to '+meta.targets+' targets');
+  if(meta.revive&&!targets.some(r=>r.c&&isDead(r.c))) throw new Error(meta.name+' needs a dead creature');
+  let as=meta.cast==='bonus'?'bonus':meta.cast==='reaction'?'reaction':'action';
+  if(it.quick){ if(as!=='action') throw new Error('Only a spell that takes an action can be quickened'); if(!k||!(k.resources||[]).some(r=>r.key==='sp')||k.klass!=='Sorcerer'||k.level<3) throw new Error('Quickened Spell is a sorcerer’s Metamagic');
+    const spr=k.resources.find(r=>r.key==='sp'); if(spr.max-spr.used<2) throw new Error('Quickened Spell needs 2 sorcery points'); as='bonus'; }
   if(slot>0&&k){ if(!parent.SUITE.spendSlot(c.ref,slot)) throw new Error('No level '+slot+' slot left'); }
-  if(S.started) payCost(c,Object.assign({},it,{as:meta.cast==='bonus'?'bonus':meta.cast==='reaction'?'reaction':'action'}));
+  if(it.quick){ parent.SUITE.useResource(c.ref,'sp',2); }
+  if(S.started){ payCost(c,Object.assign({},it,{as})); const e=eco(c); (e.spells=e.spells||[]).push({as,lvl:slot}); if(as==='action'&&slot===0) e.cantripAction=true; }
   const dc=k?k.dc:13, atk=k?k.atk:5, md=k?k.mod:0;
   if(meta.conc){ if(c.conc) dropConc(c,'casts '+meta.name); c.conc={spell:meta.name}; }
-  const head=esc(c.name)+' casts <b>'+esc(meta.name)+'</b>'+(slot?' (L'+slot+')':'');
+  const head=esc(c.name)+' casts <b>'+esc(meta.name)+'</b>'+(slot?' (L'+slot+')':'')+(it.quick?' <i>(quickened, 2 sorcery points)</i>':'');
+  if(meta.revive){ targets.forEach(ref=>{ const t=ref.c; if(!t||!isDead(t)) return; t.deathS=0; t.deathF=0; t.hp=meta.revive==='full'?t.maxHp:1; t.conditions=t.conditions.filter(x=>x!=='Unconscious'); syncPC(t); log('✨ '+head+' — <b>'+esc(t.name)+'</b> returns to life with '+t.hp+' HP','heal'); }); return; }
   if(meta.manual||(!meta.dmg&&!meta.heal&&!meta.effect&&!meta.auto&&!meta.attack)){ log(head+(targets.length?' on '+targets.map(t=>esc(t.name)).join(', '):'')+(meta.conc?' <i>(concentrating)</i>':'')); return; }
   const parts=[];
   if(meta.auto){                                                  // Magic Missile: every dart hits
@@ -10699,13 +10879,23 @@ function resolveFeature(c,it){
     return;
   }
   if(key==='cunning'){ if(S.started) payCost(c,{t:'feature',as:'bonus'}); resolveStd(c,{which:it.mode,as:'free'}); return; }
+  if(key==='fastHands'){ if(S.started) payCost(c,{t:'feature',as:'bonus'}); log(esc(c.name)+' — <b>Fast Hands</b>: '+(it.text?esc(it.text):'uses an object')+' (bonus action)'); return; }
+  if(key==='martial'||key==='frenzy'||key==='warMagic'){ const e=eco(c);
+    if(S.started&&key==='martial'&&!e.tookAttack) throw new Error('Take the Attack action first');
+    if(S.started&&key==='warMagic'&&!e.cantripAction) throw new Error('Cast a cantrip with your action first');
+    if(key==='frenzy'&&!(k&&k.raging)) throw new Error('Only while raging');
+    if(S.started) payCost(c,{t:'feature',as:'bonus'}); e.attacks+=1; log(esc(c.name)+' — <b>'+FEATURES[key].label+'</b>: one more attack (bonus action)'); return; }
+  if(key==='steady'){ const e=eco(c); if(S.started&&e.move<e.moveMax) throw new Error('Only if you haven’t moved this turn'); if(S.started){ payCost(c,{t:'feature',as:'bonus'}); e.move=0; } addEffect(c,{name:'Steady Aim (adv. on next attack)',adv:1},c,false); log(esc(c.name)+' takes <b>Steady Aim</b>'); return; }
+  if(key==='as'&&S.started&&eco(c).surged) throw new Error('Only one Action Surge per turn');
   const res=k&&(k.resources||[]).find(r=>r.key===key); if(!res) throw new Error('Unknown feature');
+  if(key==='warpriest'&&S.started&&!eco(c).tookAttack) throw new Error('Take the Attack action first');
   if(key==='loh'){ const t=cById(it.target)||c; const amt=Math.max(1,+it.amount||1); if(!parent.SUITE.useResource(c.ref,'loh',amt)) throw new Error('Not enough Lay on Hands left'); if(S.started) payCost(c,{t:'feature',as:'action'}); const n=healTo(t,amt); log(esc(c.name)+' uses <b>Lay on Hands</b> on '+esc(t.name)+': +<b>'+n+'</b>','heal'); return; }
   if(!parent.SUITE.useResource(c.ref,key,1)) throw new Error('No '+res.name+' left');
   if(S.started&&as!=='free') payCost(c,{t:'feature',as});
   if(key==='rage') log(esc(c.name)+' <b>rages!</b>','dmg');
   else if(key==='sw'){ const r=rollDice('1d10+'+k.level); const n=healTo(c,r.total); log(esc(c.name)+' uses <b>Second Wind</b>: '+r.detail+' = +<b>'+n+'</b>','heal'); }
-  else if(key==='as'){ eco(c).action+=1; log(esc(c.name)+' uses <b>Action Surge</b>!'); }
+  else if(key==='as'){ eco(c).action+=1; eco(c).surged=true; log(esc(c.name)+' uses <b>Action Surge</b>!'); }
+  else if(key==='warpriest'){ const e=eco(c); e.attacks+=1; log(esc(c.name)+' — <b>War Priest</b>: one weapon attack as a bonus action'); }
   else if(key==='bi'){ const t=cById(it.target); const die=(/d(\d+)/.exec(res.note)||[,6])[1]; if(t) addEffect(t,{name:'Inspired (d'+die+')'},c,false); log(esc(c.name)+' inspires '+(t?esc(t.name):'an ally')+' (d'+die+')'); }
   else log(esc(c.name)+' uses <b>'+esc(res.name)+'</b>');
 }
@@ -10863,34 +11053,56 @@ function coverBonus(att,t,isSave){
   return blockers.length?2:0;
 }
 function inBounds(x,y,s){ return x>=0&&y>=0&&x+s<=S.grid.cols&&y+s<=S.grid.rows; }
-// movement: Dijkstra over top-left positions; enemies block, allies can be passed but not ended on
+// movement: Dijkstra over top-left positions.
+//  · a living hostile creature blocks you, unless it's two or more sizes bigger or smaller (or you're a halfling and it's bigger)
+//  · allies can be passed but not ended on; the dead don't take up space
+//  · no slipping diagonally between two walls that touch at a corner
+//  · difficult terrain and crawling while prone each add 5 ft per square
+function canPassHostile(m,o){ const d=sizeRank(o)-sizeRank(m); return Math.abs(d)>=2||(d>0&&/halfling/i.test(m.race||'')); }
 function reach(c,budget){
   const s=sizeCells(c), start=c.pos; if(!start) return {dist:new Map(),prev:new Map()};
-  const others=S.combatants.filter(o=>o!==c&&o.pos&&!incapacitated(o));
-  const occ=new Map(); others.forEach(o=>footprint(o).forEach(k=>occ.set(k,o)));
-  const dist=new Map(), prev=new Map(), q=[[0,start.x,start.y]]; dist.set(key(start.x,start.y),0);
-  while(q.length){
-    q.sort((a,b)=>a[0]-b[0]); const [dc,x,y]=q.shift();
-    if(dc>(dist.get(key(x,y))??Infinity)) continue;
+  const others=S.combatants.filter(o=>o!==c&&o.pos&&!isDead(o));
+  const block=new Set(), occ=new Set();
+  others.forEach(o=>{ const hostile=teamOf(o)!==teamOf(c); footprint(o).forEach(k=>{ occ.add(k); if(hostile&&!canPassHostile(c,o)) block.add(k); }); });
+  const walled=(x,y)=>{ if(!inBounds(x,y,s)) return true; for(let dy=0;dy<s;dy++) for(let dx=0;dx<s;dx++) if(blocksMove(S.grid.tiles[key(x+dx,y+dy)])) return true; return false; };
+  const crawl=hasCond(c,'Prone')?5:0;
+  // cost is feet; among equally cheap routes prefer the straightest (true length breaks ties), so the path preview doesn't zig-zag
+  const dist=new Map(), tbs=new Map(), prev=new Map(); dist.set(key(start.x,start.y),0); tbs.set(key(start.x,start.y),0);
+  const lt=(a,b)=>a[0]<b[0]||(a[0]===b[0]&&a[1]<b[1]);
+  const H=[[0,0,start.x,start.y]];                     // binary heap on (feet, length)
+  const push=n=>{ H.push(n); let i=H.length-1; while(i>0){ const p=(i-1)>>1; if(!lt(H[i],H[p])) break; [H[p],H[i]]=[H[i],H[p]]; i=p; } };
+  const pop=()=>{ const top=H[0], last=H.pop(); if(H.length){ H[0]=last; let i=0; for(;;){ const l=2*i+1, r=l+1; let m=i; if(l<H.length&&lt(H[l],H[m])) m=l; if(r<H.length&&lt(H[r],H[m])) m=r; if(m===i) break; [H[m],H[i]]=[H[i],H[m]]; i=m; } } return top; };
+  while(H.length){
+    const [dc,tb,x,y]=pop(), ck=key(x,y);
+    if(dc>dist.get(ck)||(dc===dist.get(ck)&&tb>tbs.get(ck))) continue;
     for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){ if(!dx&&!dy) continue;
       const nx=x+dx, ny=y+dy; if(!inBounds(nx,ny,s)) continue;
-      const cells=footprint(c,{x:nx,y:ny}); let ok=true, diff=false;
-      for(const k of cells){ const tl=S.grid.tiles[k]; if(blocksMove(tl)){ ok=false; break; } if(isDifficult(tl)) diff=true; const o=occ.get(k); if(o&&teamOf(o)!==teamOf(c)){ ok=false; break; } }
+      if(dx&&dy&&walled(nx,y)&&walled(x,ny)) continue;
+      let ok=true, diff=false;
+      for(let fy=0;fy<s&&ok;fy++) for(let fx=0;fx<s;fx++){ const k=key(nx+fx,ny+fy), tl=S.grid.tiles[k]; if(blocksMove(tl)||block.has(k)){ ok=false; break; } if(isDifficult(tl)) diff=true; }
       if(!ok) continue;
-      const nd=dc+(diff?10:5); if(budget!=null&&nd>budget) continue;
-      const nk=key(nx,ny); if(nd<(dist.get(nk)??Infinity)){ dist.set(nk,nd); prev.set(nk,key(x,y)); q.push([nd,nx,ny]); }
+      const nd=dc+5+(diff?5:0)+crawl; if(budget!=null&&nd>budget) continue;
+      const nt=tb+(dx&&dy?1.4142:1), nk=key(nx,ny), od=dist.get(nk)??Infinity;
+      if(nd<od||(nd===od&&nt<tbs.get(nk)-1e-9)){ dist.set(nk,nd); tbs.set(nk,nt); prev.set(nk,ck); push([nd,nt,nx,ny]); }
     }
   }
   // can't end inside another creature
-  for(const k of [...dist.keys()]){ const [x,y]=k.split(',').map(Number); if(footprint(c,{x,y}).some(fk=>occ.has(fk))) dist.delete(k); }
+  for(const k of [...dist.keys()]){ const [x,y]=k.split(',').map(Number); if((x!==start.x||y!==start.y)&&footprint(c,{x,y}).some(fk=>occ.has(fk))) dist.delete(k); }
   return {dist,prev};
 }
+// reach() for the map overlay, computed once per state change
+const REACH_CACHE={k:'',r:null};
+function reachCached(c){ const k=STATE_VER+'|'+c.id+'|'+(c.pos?c.pos.x+','+c.pos.y:''); if(REACH_CACHE.k!==k){ REACH_CACHE.k=k; REACH_CACHE.r=reach(c,null); } return REACH_CACHE.r; }
+// where a token would stand if dropped at the pointer: big tokens are centred on it, not hung off their top-left corner
+function tokenAt(c,cell){ const s=sizeCells(c); if(!cell) return null; if(s===1||cell.fx==null) return {x:Math.max(0,Math.min(S.grid.cols-s,cell.x)),y:Math.max(0,Math.min(S.grid.rows-s,cell.y))};
+  return {x:Math.max(0,Math.min(S.grid.cols-s,Math.round(cell.fx-s/2))),y:Math.max(0,Math.min(S.grid.rows-s,Math.round(cell.fy-s/2)))}; }
 function resolveMove(c,it,actor){
   if(!c) throw new Error('No combatant');
   if(it.to){
     if(!S.grid.on) throw new Error('Grid is off');
     const to={x:it.to.x|0,y:it.to.y|0}; if(!inBounds(to.x,to.y,sizeCells(c))) throw new Error('Off the map');
     if(!c.pos||it.free){ if(actor!=='dm') throw new Error('Only the DM can place tokens'); c.pos=to; return; }
+    if(actor!=='dm'&&lifeOf(c)!=='alive') throw new Error(c.name+' can’t move — '+lifeOf(c));
     const r=reach(c,null), cost=r.dist.get(key(to.x,to.y));
     if(cost==null) throw new Error('Can’t get there — blocked');
     if(S.started){ const e=eco(c); if(S.settings.enforce&&actor!=='dm'&&cost>e.move) throw new Error('Not enough movement ('+e.move+' ft left, needs '+cost+')'); e.move=Math.max(0,e.move-cost); }
@@ -10956,7 +11168,7 @@ function revealVision(){
 }
 function areaTargets(c,meta,aim){
   const cells=templateCells(c,meta.area,aim);
-  return S.combatants.filter(o=>o.pos&&!(meta.area.fromSelf&&o===c)&&footprint(o).some(k=>cells.has(k)))
+  return S.combatants.filter(o=>o.pos&&!isDead(o)&&!(meta.area.fromSelf&&o===c)&&footprint(o).some(k=>cells.has(k)))
     .filter(o=>!(meta.enemiesOnly&&teamOf(o)===teamOf(c)));
 }
 
@@ -10991,21 +11203,38 @@ function gridSvg(V,actor){
     if(e) h+='<path d="'+e+'" stroke="'+TH.edge+'" stroke-width="2.5" stroke-linecap="square" fill="none" opacity=".9"/>'; }
   // movement range for the actor on their turn
   const act=actor&&V.combatants.find(c=>c.id===actor.id);
-  if(act&&act.pos&&!UI.pending&&!UI.gridEdit&&canMoveNow(act)){
-    const budget=S.started?eco(cById(act.id)).move:null; const r=reach(cById(act.id),budget==null?60:budget);
-    r.dist.forEach((dd,k)=>{ const [x,y]=k.split(',').map(Number); if(x===act.pos.x&&y===act.pos.y) return; h+='<rect x="'+x*cs+'" y="'+y*cs+'" width="'+cs+'" height="'+cs+'" fill="rgba(127,201,127,'+(dd<=(budget??60)?.13:.05)+')"/>'; });
-    if(UI.hover){ const hk=key(UI.hover.x,UI.hover.y); if(r.dist.has(hk)){ let p=[], k=hk; while(k){ p.push(k); k=r.prev.get(k); } h+='<polyline points="'+p.map(k=>{ const [x,y]=k.split(',').map(Number); const s2=sizeCells(act)/2; return ((x+s2)*cs)+','+((y+s2)*cs); }).join(' ')+'" fill="none" stroke="#7fc97f" stroke-width="3" stroke-dasharray="6 4"/><text x="'+(UI.hover.x*cs+cs/2)+'" y="'+(UI.hover.y*cs-4)+'" fill="#7fc97f" font-size="12" text-anchor="middle" font-family="Georgia">'+r.dist.get(hk)+' ft</text>'; } }
+  const dragFree=GD.drag&&GD.drag.free;
+  if(act&&act.pos&&!UI.pending&&!UI.gridEdit&&!dragFree&&canMoveNow(act)&&!isDead(act)&&lifeOf(act)==='alive'){
+    const full=cById(act.id), s=sizeCells(act), r=reachCached(full);
+    const left=S.started?eco(full).move:speedFt(full), may=dd=>dd<=left||!S.started||UI.viewAs==='dm'||!S.settings.enforce;
+    const best=new Map(); r.dist.forEach((dd,k)=>{ if(dd>left) return; const [x,y]=k.split(',').map(Number); for(let fy=0;fy<s;fy++) for(let fx=0;fx<s;fx++){ const kk=key(x+fx,y+fy); if(!best.has(kk)||best.get(kk)>dd) best.set(kk,dd); } });
+    const own=new Set(footprint(act));
+    best.forEach((dd,k)=>{ if(own.has(k)) return; const [x,y]=k.split(',').map(Number); h+='<rect x="'+x*cs+'" y="'+y*cs+'" width="'+cs+'" height="'+cs+'" fill="rgba(127,201,127,.13)" pointer-events="none"/>'; });
+    { own.forEach(k=>best.set(k,0)); let e=''; best.forEach((dd,k)=>{ const [x,y]=k.split(',').map(Number), X=x*cs, Y=y*cs;      // outline the edge of the range
+        if(!best.has(key(x,y-1))) e+='M'+X+' '+Y+'h'+cs; if(!best.has(key(x,y+1))) e+='M'+X+' '+(Y+cs)+'h'+cs; if(!best.has(key(x-1,y))) e+='M'+X+' '+Y+'v'+cs; if(!best.has(key(x+1,y))) e+='M'+(X+cs)+' '+Y+'v'+cs; });
+      if(e) h+='<path d="'+e+'" stroke="#7fc97f" stroke-width="2" stroke-opacity=".75" fill="none" pointer-events="none"/>'; }
+    const to=UI.hover&&tokenAt(act,UI.hover);
+    if(to&&(to.x!==act.pos.x||to.y!==act.pos.y)){ const hk=key(to.x,to.y), dd=r.dist.get(hk), gx=to.x*cs, gy=to.y*cs, gw=s*cs;
+      if(dd!=null){ const col=dd<=left?'#7fc97f':may(dd)?'#e0b050':'#e05252'; let p=[], k=hk; while(k){ p.push(k); k=r.prev.get(k); }
+        h+='<polyline points="'+p.map(k=>{ const [x,y]=k.split(',').map(Number); return ((x+s/2)*cs)+','+((y+s/2)*cs); }).join(' ')+'" fill="none" stroke="'+col+'" stroke-width="3" stroke-dasharray="6 4" pointer-events="none"/>'+
+          '<rect x="'+(gx+2)+'" y="'+(gy+2)+'" width="'+(gw-4)+'" height="'+(gw-4)+'" rx="'+gw/2+'" fill="'+col+'" fill-opacity=".12" stroke="'+col+'" stroke-width="2" stroke-dasharray="5 3" pointer-events="none"/>'+
+          '<rect x="'+(gx+gw/2-30)+'" y="'+(gy-20)+'" width="60" height="17" rx="8" fill="rgba(10,8,5,.85)" pointer-events="none"/><text x="'+(gx+gw/2)+'" y="'+(gy-7)+'" fill="'+col+'" font-size="12" text-anchor="middle" font-family="Georgia" font-weight="700" pointer-events="none">'+dd+' ft'+(dd>left&&S.started?' ✕':'')+'</text>'; }
+      else if(!own.has(key(UI.hover.x,UI.hover.y))) h+='<rect x="'+(gx+2)+'" y="'+(gy+2)+'" width="'+(gw-4)+'" height="'+(gw-4)+'" rx="'+gw/2+'" fill="none" stroke="#e05252" stroke-width="2" stroke-dasharray="3 4" opacity=".7" pointer-events="none"/>';
+    }
   }
+  if(dragFree&&UI.hover){ const dc=cById(GD.drag.id); if(dc){ const to=tokenAt(dc,UI.hover), gw=sizeCells(dc)*cs; h+='<rect x="'+(to.x*cs+2)+'" y="'+(to.y*cs+2)+'" width="'+(gw-4)+'" height="'+(gw-4)+'" rx="'+gw/2+'" fill="rgba(201,168,76,.15)" stroke="#c9a84c" stroke-width="2" stroke-dasharray="5 3" pointer-events="none"/>'; } }
   // spell template preview
   if(UI.pending&&UI.pending.kind==='cast'&&UI.pending.meta.area&&UI.aim){
     const caster=cById(UI.pending.cid); if(caster){ const cells=templateCells(caster,UI.pending.meta.area,UI.aim);
       cells.forEach(k=>{ const [x,y]=k.split(',').map(Number); h+='<rect x="'+x*cs+'" y="'+y*cs+'" width="'+cs+'" height="'+cs+'" fill="rgba(224,120,60,.32)" stroke="rgba(224,120,60,.7)"/>'; }); }
   }
-  // tokens
-  V.combatants.forEach(c=>{ if(!c.pos) return; const s=sizeCells(c), x=c.pos.x*cs, y=c.pos.y*cs, r=s*cs/2-3, cx=x+s*cs/2, cy=y+s*cs/2;
-    const full=cById(c.id)||c, col=TEAM_COL[teamOf(c)]||'#999', isCur=V.currentId===c.id, sel=UI.selected===c.id, down=(c.hp!=null?c.hp<=0:c.status==='down');
+  // tokens (the dead lie under the living)
+  h+='<defs><filter id="f-dead"><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncR type="linear" slope=".55"/><feFuncG type="linear" slope=".55"/><feFuncB type="linear" slope=".55"/></feComponentTransfer></filter></defs>';
+  const curTok=V.currentId||(S.started&&UI.viewAs==='dm'&&current()?current().id:null);
+  V.combatants.slice().sort((a,b)=>(isDead(b)?1:0)-(isDead(a)?1:0)).forEach(c=>{ if(!c.pos) return; const s=sizeCells(c), x=c.pos.x*cs, y=c.pos.y*cs, r=s*cs/2-3, cx=x+s*cs/2, cy=y+s*cs/2;
+    const full=cById(c.id)||c, life=lifeOf(c), dead=life==='dead', col=dead?'#6b6b6b':TEAM_COL[teamOf(c)]||'#999', isCur=curTok===c.id, sel=UI.selected===c.id;
     const tgt=UI.pending&&(UI.pending.targets||[]).some(t=>t.cid===c.id);
-    h+='<g class="g-tok" data-id="'+c.id+'" style="cursor:pointer;opacity:'+(full.hidden?.45:down?.55:1)+'">';
+    h+='<g class="g-tok'+(dead?' dead':'')+'" data-id="'+c.id+'" style="cursor:pointer;opacity:'+(full.hidden?.45:dead?.75:1)+'"'+(dead?' filter="url(#f-dead)"':'')+'>';
     if(isCur) h+='<circle cx="'+cx+'" cy="'+cy+'" r="'+(r+5)+'" fill="none" stroke="#c9a84c" stroke-width="3" opacity=".9"/>';
     h+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="#120e08" stroke="'+(tgt?'#e05252':sel?'#fff':col)+'" stroke-width="'+(tgt||sel?4:3)+'"'+(full.hidden&&dm?' stroke-dasharray="5 4"':'')+'/>';
     const img=imgSrc(c), ic=c.icon&&ICON_PATHS[c.icon];
@@ -11013,8 +11242,17 @@ function gridSvg(V,actor){
     else if(ic) h+='<g transform="translate('+(cx-r*0.66)+' '+(cy-r*0.66)+') scale('+(r*1.32/512)+')" pointer-events="none"><path d="'+ic+'" fill="'+col+'"/></g>';
     else h+='<text x="'+cx+'" y="'+(cy+Math.min(14,r*.42))+'" text-anchor="middle" font-family="Georgia" font-size="'+Math.max(10,Math.min(18,r*.8))+'" fill="'+col+'" font-weight="700" pointer-events="none">'+esc(initials(c.name))+'</text>';
     if(img) h+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+(tgt?'#e05252':sel?'#fff':col)+'" stroke-width="'+(tgt||sel?4:3)+'"/>';
-    if(c.hp==null&&c.status&&HINTS[c.status]&&c.status!=='unknown'){ const H=HINTS[c.status], circ=2*Math.PI*(r-4); h+='<circle cx="'+cx+'" cy="'+cy+'" r="'+(r-4)+'" fill="none" stroke="'+H.col+'" stroke-width="3" stroke-dasharray="'+(circ*H.w/100)+' '+circ+'" transform="rotate(-90 '+cx+' '+cy+')" opacity=".85"/>'; }
-    if(c.hp!=null&&c.maxHp){ const frac=Math.max(0,Math.min(1,c.hp/c.maxHp)), circ=2*Math.PI*(r-4); h+='<circle cx="'+cx+'" cy="'+cy+'" r="'+(r-4)+'" fill="none" stroke="'+(frac>.5?'#7fc97f':frac>.25?'#e0b050':'#e05252')+'" stroke-width="3" stroke-dasharray="'+(circ*frac)+' '+circ+'" transform="rotate(-90 '+cx+' '+cy+')" opacity=".85"/>'; }
+    if(life!=='alive'){
+      if(dead){ h+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="rgba(0,0,0,.45)"/><text x="'+cx+'" y="'+(cy+r*.36)+'" text-anchor="middle" font-size="'+r*1.05+'" fill="#e8e0d0" pointer-events="none">☠</text>'; }
+      else { h+='<circle cx="'+cx+'" cy="'+cy+'" r="'+(r+2)+'" fill="none" stroke="'+(life==='dying'?'#ff4d4d':'#c9a84c')+'" stroke-width="3"'+(life==='stable'?' stroke-dasharray="4 4"':'')+'>'+(life==='dying'?'<animate attributeName="stroke-opacity" values="1;.2;1" dur="1.2s" repeatCount="indefinite"/>':'')+'</circle>'+
+        '<circle cx="'+cx+'" cy="'+cy+'" r="'+(r-1)+'" fill="rgba(60,0,0,.35)" pointer-events="none"/><text x="'+cx+'" y="'+(cy+r*.3)+'" text-anchor="middle" font-size="'+r*.85+'" pointer-events="none">'+(life==='dying'?'💀':'💤')+'</text>';
+        if(c.kind==='pc'&&c.hp!=null&&(c.deathS||c.deathF||!c.status)){ const pip=(i,on,ok)=>'<circle cx="'+(cx+(i-2.5)*11+(i>=3?6:0)-3)+'" cy="'+(y+s*cs+7)+'" r="4" fill="'+(on?(ok?'#7fc97f':'#e05252'):'rgba(0,0,0,.6)')+'" stroke="'+(ok?'#7fc97f':'#e05252')+'" stroke-width="1"/>';
+          h+=[0,1,2].map(i=>pip(i,(c.deathS||0)>i,true)).join('')+[3,4,5].map(i=>pip(i,(c.deathF||0)>i-3,false)).join(''); } }
+      const lbl=dead?'DEAD':life==='dying'?'DYING':'STABLE', lw=lbl.length*7+12;
+      h+='<rect x="'+(cx-lw/2)+'" y="'+(y-12)+'" width="'+lw+'" height="15" rx="4" fill="'+(dead?'#2a2a2a':life==='dying'?'#7a1010':'#5a4a10')+'" stroke="rgba(0,0,0,.6)" pointer-events="none"/><text x="'+cx+'" y="'+(y-1)+'" text-anchor="middle" font-size="11" font-weight="700" font-family="Georgia" letter-spacing="1" fill="#f3e6c8" pointer-events="none">'+lbl+'</text>';
+    }
+    else if(c.hp==null&&c.status&&HINTS[c.status]&&c.status!=='unknown'){ const H=HINTS[c.status], circ=2*Math.PI*(r-4); h+='<circle cx="'+cx+'" cy="'+cy+'" r="'+(r-4)+'" fill="none" stroke="'+H.col+'" stroke-width="3" stroke-dasharray="'+(circ*H.w/100)+' '+circ+'" transform="rotate(-90 '+cx+' '+cy+')" opacity=".85"/>'; }
+    if(life==='alive'&&c.hp!=null&&c.maxHp){ const frac=Math.max(0,Math.min(1,c.hp/c.maxHp)), circ=2*Math.PI*(r-4); h+='<circle cx="'+cx+'" cy="'+cy+'" r="'+(r-4)+'" fill="none" stroke="'+(frac>.5?'#7fc97f':frac>.25?'#e0b050':'#e05252')+'" stroke-width="3" stroke-dasharray="'+(circ*frac)+' '+circ+'" transform="rotate(-90 '+cx+' '+cy+')" opacity=".85"/>'; }
     const num=/\s(\d+)$/.exec(c.name||''); if(num&&(img||ic)) h+='<circle cx="'+(cx+r*.68)+'" cy="'+(cy+r*.68)+'" r="'+Math.max(7,r*.3)+'" fill="#120e08" stroke="'+col+'" stroke-width="1.5"/><text x="'+(cx+r*.68)+'" y="'+(cy+r*.68+Math.max(3.5,r*.13))+'" text-anchor="middle" font-size="'+Math.max(9,r*.36)+'" font-family="Georgia" font-weight="700" fill="#e8d5a0" pointer-events="none">'+num[1]+'</text>';
     if(c.light) h+='<text x="'+(x+8)+'" y="'+(y+13)+'" font-size="12" pointer-events="none">🔥</text>';
     if((c.conditions||[]).length||c.conc) h+='<circle cx="'+(x+s*cs-7)+'" cy="'+(y+7)+'" r="5" fill="'+(c.conc?'#7a9de0':'#c9a84c')+'"/>';
@@ -11046,6 +11284,7 @@ function paintAt(cell){
   else if(b==='erase') it={t:'tile',keys:[k],tile:null};
   else if(b==='light') it={t:'tile',keys:[k],tile:{t:'light',bright:20,dim:20}};
   else { const T=TILE_TYPES[b]; const tile={t:b}; if(T.hp){ tile.hp=T.hp; tile.maxHp=T.hp; tile.ac=T.ac; } if(T.door) tile.open=false; it={t:'tile',keys:[k],tile}; }
+  if(!P.marked&&undoable(it)){ P.marked=true; undoPush({before:snap(),label:'map painting',actor:UI.viewAs,turn:S.turnSeq||0,dice:false}); }
   P.batch.push(it); if(Host.quiet(it,UI.viewAs).ok) redrawGrid();
 }
 function gridWindowListeners(){
@@ -11057,7 +11296,8 @@ function gridWindowListeners(){
   });
   window.addEventListener('mouseup',ev=>{
     if(GD.painting){ const P=GD.painting; GD.painting=null; if(P.batch.length){ NET.sendBatch&&NET.sendBatch(P.batch); commit(); } }
-    if(GD.drag){ const D=GD.drag; GD.drag=null; const cell=cellFromEvent(ev); if(D.moved&&cell) send({t:'move',cid:D.id,to:{x:cell.x,y:cell.y},free:true}); }
+    if(GD.drag){ const D=GD.drag; GD.drag=null; const cell=cellFromEvent(ev), dc=cById(D.id);
+      if(D.moved&&cell&&dc){ const to=tokenAt(dc,cell); if(!dc.pos||to.x!==dc.pos.x||to.y!==dc.pos.y) send(D.free?{t:'move',cid:D.id,to,free:true}:{t:'move',cid:D.id,to}); } else redrawGrid(); }
     GD.panning=null;
   });
 }
@@ -11077,15 +11317,19 @@ function bindGrid(V,actor){
       if(tokEl){ toggleTarget({cid:tokEl.dataset.id}); return; }
       return;
     }
-    if(UI.placing){ send({t:'placeToken',cid:UI.placing,pos:{x:cell.x,y:cell.y}}); UI.placing=null; return; }
+    if(UI.placing){ const pc=cById(UI.placing); send({t:'placeToken',cid:UI.placing,pos:pc?tokenAt(pc,cell):{x:cell.x,y:cell.y}}); UI.placing=null; return; }
     if(tokEl){
-      const id=tokEl.dataset.id; UI.selected=id; ev.preventDefault();
-      if(UI.viewAs==='dm'&&(UI.gridEdit||!S.started||ev.shiftKey)) GD.drag={id,start:{x:cell.x,y:cell.y},moved:false};
+      const id=tokEl.dataset.id; ev.preventDefault();
+      const mineMove=actor&&id===actor.id&&actor.pos&&canMoveNow(actor)&&lifeOf(cById(actor.id))==='alive';
+      if(mineMove&&sizeCells(actor)>1){ const to=tokenAt(actor,cell); if(to.x!==actor.pos.x||to.y!==actor.pos.y){ send({t:'move',cid:actor.id,to}); return; } }
+      UI.selected=id;
+      if(UI.viewAs==='dm'&&(UI.gridEdit||!S.started||ev.shiftKey)) GD.drag={id,start:{x:cell.x,y:cell.y},moved:false,free:true};
+      else if(mineMove) GD.drag={id,start:{x:cell.x,y:cell.y},moved:false,free:false};
       render(); return;
     }
     const tl=S.grid.tiles[key(cell.x,cell.y)];
     if(tl&&tileInfo(tl).door&&!tl.broken){ const a=actor&&cById(actor.id); if(UI.viewAs==='dm'||(a&&a.pos&&Math.max(Math.abs(a.pos.x-cell.x),Math.abs(a.pos.y-cell.y))<=sizeCells(a))){ send({t:'door',key:key(cell.x,cell.y),cid:a?a.id:undefined}); return; } else { toast('Get next to the door to open it'); return; } }
-    if(actor&&actor.pos&&canMoveNow(actor)) send({t:'move',cid:actor.id,to:{x:cell.x,y:cell.y}});
+    if(actor&&actor.pos&&canMoveNow(actor)){ const a=cById(actor.id); if(a&&lifeOf(a)!=='alive'){ toast(a.name+' can’t move ('+lifeOf(a)+')'); return; } send({t:'move',cid:actor.id,to:tokenAt(actor,cell)}); }
   };
   host.onmousemove=ev=>{
     if(GD.panning||GD.painting||GD.drag) return;
@@ -11173,15 +11417,35 @@ const dis=it=>{ const w=can(it); return w?' disabled title="'+esc(w)+'"':''; };
 function render(){
   // a re-render (often triggered remotely) must not eat what you're typing
   const ae=document.activeElement, keep=ae&&ae.id&&/^(INPUT|TEXTAREA)$/.test(ae.tagName)&&!ae.closest('#modal')&&!ae.closest('#dicebar')?{id:ae.id,v:ae.value,s:ae.selectionStart,e:ae.selectionEnd}:null;
-  const V=viewNow(); renderTop(V); renderRail(V); renderStage(V); renderLog(V); renderBanner(V); document.body.classList.toggle('player-view',UI.viewAs!=='dm');
+  const V=viewNow(); renderTop(V); renderRail(V); renderStage(V); renderLog(V); renderBanner(V); flashCheck(V); document.body.classList.toggle('player-view',UI.viewAs!=='dm');
   document.body.classList.toggle('net-client',NET.mode==='client');
   if(keep){ const n=document.getElementById(keep.id); if(n&&n!==ae){ n.value=keep.v; n.focus(); try{ n.setSelectionRange(keep.s,keep.e); }catch(e){} } }
 }
 
+// ---------------- flashes: your turn, going down, dying ----------------
+const FLASH={life:{},turn:null,ready:false};
+function flash(html,cls,ms){ const f=$('#flash'); if(!f) return; f.innerHTML='<div class="fl '+(cls||'')+'">'+html+'</div>'; f.classList.add('show'); clearTimeout(f._t); f._t=setTimeout(()=>f.classList.remove('show'),ms||1800); }
+function flashCheck(V){
+  const dm=UI.viewAs==='dm', watch=V.combatants.filter(c=>dm?teamOf(c)==='party':isMine(V,c));
+  const prev=FLASH.life, now={}; watch.forEach(c=>now[c.id]=lifeOf(c));
+  if(FLASH.ready) watch.forEach(c=>{ const a=prev[c.id], b=now[c.id]; if(!a||a===b) return;
+    if(b==='dead') flash('<div class="fl-ic">☠</div><b>'+esc(c.name)+'</b> has died','fl-dead',4200);
+    else if(b==='dying') flash('<div class="fl-ic">💀</div><b>'+esc(c.name)+'</b> is down and dying','fl-dying',3200);
+    else if(b==='stable') flash('<b>'+esc(c.name)+'</b> is stable','fl-stable',2200);
+    else if(b==='alive'&&(a==='dying'||a==='stable'||a==='dead')) flash('<b>'+esc(c.name)+'</b> is back on their feet','fl-up',2200); });
+  FLASH.life=now;
+  const cur=V.currentId||(S.started&&dm&&current()?current().id:null), turnKey=S.started?cur+'|'+S.round+'|'+(S.turnSeq||0):null;
+  if(FLASH.ready&&turnKey&&turnKey!==FLASH.turn&&!dm){ const c=V.combatants.find(x=>x.id===cur); if(c&&isMine(V,c)) flash(lifeOf(c)==='dying'?'<div class="fl-ic">💀</div>Your turn — roll a <b>death save</b>':'<b>Your turn</b> · '+esc(c.name),lifeOf(c)==='dying'?'fl-dying':'fl-turn',1600); }
+  FLASH.turn=turnKey; FLASH.ready=true;
+}
 // ---------------- top bar ----------------
 function renderTop(V){
   const dm=UI.viewAs==='dm';
-  $('#round-badge').innerHTML=S.started?('Round <b>'+S.round+'</b>'):'<span style="font-style:italic">not in combat</span>';
+  const curC=S.started?(V.currentId?V.combatants.find(c=>c.id===V.currentId):(dm?current():null)):null;
+  $('#round-badge').innerHTML=S.started?('Round <b>'+S.round+'</b>'+(curC?' · <span class="rb-cur">'+esc(curC.name)+'</span>':'')):'<span style="font-style:italic">not in combat</span>';
+  const ui=undoInfo(UI.viewAs)||{}, bu=$('#btn-undo'), br=$('#btn-redo');
+  if(bu){ bu.disabled=!ui.u; bu.title=ui.u?'Undo '+ui.ul+' (Ctrl+Z)':(ui.uw||'Nothing to undo'); bu.style.display=ui.off?'none':''; }
+  if(br){ br.disabled=!ui.r; br.title=ui.r?'Redo '+ui.rl+' (Ctrl+Y)':'Nothing to redo'; br.style.display=ui.off?'none':''; }
   const nb=$('#btn-next');
   if(PREP){ nb.textContent='Editing prep'; nb.disabled=true; }
   else if(dm){ nb.textContent=S.started?'Next Turn →':'Start Combat →'; nb.disabled=!S.combatants.length; }
@@ -11210,10 +11474,15 @@ function renderBanner(V){
   if(UI.viewAs!=='dm'){
     if(V.requests.length) h+='<div class="bn-info">⏳ Waiting for the DM to approve: '+V.requests.map(r=>esc((V.combatants.find(c=>c.id===r.cid)||{}).name||'?')).join(', ')+'</div>';
     if(V.you&&!V.you.controls.length&&!V.requests.length) h+='<div class="bn-info">You aren’t controlling anyone yet — <a href="#" id="bn-claim">pick your character</a>.</div>';
+    V.combatants.filter(c=>isMine(V,c)).forEach(c=>{ const L=lifeOf(c);
+      if(L==='dead') h+='<div class="bn-dead">☠ <b>'+esc(c.name)+' has died.</b> <span class="sub">Only magic like Revivify can bring them back — talk to your DM.</span></div>';
+      else if(L==='dying') h+='<div class="bn-dying">💀 <b>'+esc(c.name)+' is dying</b> — death saves '+pipsHtml(c)+(S.started&&V.currentId===c.id&&!(c.eco&&c.eco.deathRolled)?' <button class="btn sm danger" data-dsroll="'+c.id+'">Roll death save</button>':S.started&&V.currentId===c.id?' <span class="sub">rolled this turn — end your turn</span>':' <span class="sub">roll on your turn · any healing brings you back</span>')+'</div>';
+      else if(L==='stable') h+='<div class="bn-info">💤 <b>'+esc(c.name)+'</b> is stable — unconscious until healed.</div>'; });
     const cur=V.currentId&&V.combatants.find(c=>c.id===V.currentId); if(S.started&&cur) h+='<div class="bn-info">'+(isMine(V,cur)?'<b style="color:var(--good)">● Your turn</b> — '+esc(cur.name):'⏳ '+esc(cur.name)+'’s turn')+'</div>';
   }
   b.innerHTML=h; b.style.display=h?'block':'none';
   b.querySelectorAll('[data-req]').forEach(x=>x.onclick=()=>send({t:'claimResolve',rid:x.dataset.req,ok:x.dataset.ok==='1'}));
+  b.querySelectorAll('[data-dsroll]').forEach(x=>x.onclick=()=>send({t:'deathRoll',cid:x.dataset.dsroll}));
   b.querySelectorAll('[data-ini]').forEach(x=>x.onclick=()=>send({t:'initSelf',cid:x.dataset.ini}));
   b.querySelectorAll('[data-ini-set]').forEach(x=>x.onclick=()=>{ const i=b.querySelector('[data-ini-in="'+x.dataset.iniSet+'"]'); if(i&&i.value!=='') send({t:'initSelf',cid:x.dataset.iniSet,value:i.value}); });
   b.querySelectorAll('[data-ini-in]').forEach(i=>i.onkeydown=e=>{ if(e.key==='Enter'&&i.value!=='') send({t:'initSelf',cid:i.dataset.iniIn,value:i.value}); });
@@ -11231,17 +11500,17 @@ function renderRail(V){
   el.innerHTML=V.combatants.map(c=>{
     const H=c.hp==null?(HINTS[c.status]||HINTS.unknown):null, hp=c.hp!=null&&c.maxHp?Math.max(0,Math.min(100,Math.round(100*c.hp/Math.max(1,c.maxHp)))):H.w;
     const dmHint=UI.viewAs==='dm'&&c.hp!=null?HINTS[healthHint(c)]:null;
-    const down=c.hp!=null?c.hp<=0:c.status==='down', ctl=S.seats.find(s=>s.controls.includes(c.id)||(c.owner&&s.controls.includes(c.owner)));
+    const life=lifeOf(c), down=life!=='alive', ctl=S.seats.find(s=>s.controls.includes(c.id)||(c.owner&&s.controls.includes(c.owner)));
     const tgt=UI.pending&&(UI.pending.targets||[]).some(t=>t.cid===c.id);
-    return '<div class="cmb'+(c.id===curId?' active':'')+(teamOf(c)==='party'?' pc':'')+(tgt?' target':'')+(UI.selected===c.id?' sel':'')+(down?' down':'')+(c.hidden?' hid':'')+'" data-id="'+c.id+'">'+
-      '<div class="cmb-top"><div class="init-num">'+(hasInit(c)?c.init:'—')+'</div>'+avatarSvg(c,26)+'<div class="nm">'+(c.hidden?'👻 ':'')+(c.owner?'<span title="companion">🐾 </span>':'')+esc(c.name)+'</div>'+
+    return '<div class="cmb'+(c.id===curId?' active':'')+(teamOf(c)==='party'?' pc':'')+(tgt?' target':'')+(UI.selected===c.id?' sel':'')+(down?' down life-'+life:'')+(c.hidden?' hid':'')+'" data-id="'+c.id+'">'+
+      '<div class="cmb-top"><div class="init-num">'+(hasInit(c)?c.init:'—')+'</div>'+avatarSvg(c,26)+'<div class="nm">'+(life==='dead'?'☠ ':life==='dying'?'💀 ':'')+(c.hidden?'👻 ':'')+(c.owner?'<span title="companion">🐾 </span>':'')+esc(c.name)+'</div>'+
       (ctl?'<span class="ctl" style="background:'+ctl.color+'" title="Controlled by '+esc(ctl.name)+'"></span>':'')+
       (c.ac!=null?'<div class="ac">AC <b>'+c.ac+'</b></div>':'')+'</div>'+
       '<div class="hpline"'+(dmHint?' title="Players see: '+esc(dmHint.label||'nothing')+'"':'')+'><div class="hpbar'+(!H&&hp<=50?' bloodied':'')+'"><i style="width:'+hp+'%'+(H?';background:'+H.col:'')+'"></i></div><div class="hptxt">'+(c.hp!=null?'<b>'+c.hp+'</b>/'+c.maxHp+(c.tempHp?' +'+c.tempHp:''):'<span style="color:'+H.col+'">'+esc(H.label)+'</span>')+'</div></div>'+
-      (((c.conditions||[]).length||c.conc||down||(c.effects||[]).length||(S.started&&c.eco&&c.id===curId))?'<div class="chips">'+
-        (down?'<span class="chip dead">'+(c.kind==='pc'?'death '+(c.deathS||0)+'/'+(c.deathF||0):'down')+'</span>':'')+
+      (((c.conditions||[]).filter(x=>!(down&&x==='Unconscious')).length||c.conc||down||(c.effects||[]).length||(S.started&&c.eco&&c.id===curId))?'<div class="chips">'+
+        (down?'<span class="chip life-'+life+'">'+(life==='dead'?'dead':life==='stable'?'stable':'dying'+(c.hp!=null&&c.kind==='pc'?' '+pipsHtml(c):''))+'</span>':'')+
         (c.conc?'<span class="chip conc">conc'+(c.conc.spell?': '+esc(c.conc.spell):'')+'</span>':'')+
-        (c.conditions||[]).map(x=>'<span class="chip on">'+esc(x)+'</span>').join('')+
+        (c.conditions||[]).filter(x=>!(down&&x==='Unconscious')).map(x=>'<span class="chip on">'+esc(x)+'</span>').join('')+
         (c.effects||[]).filter(e=>!(e.cond&&e.name===e.cond&&(c.conditions||[]).includes(e.cond))).map(e=>'<span class="chip fx">'+esc(e.name)+'</span>').join('')+
       '</div>':'')+'</div>';
   }).join('');
@@ -11262,10 +11531,11 @@ function renderStage(V){
   }
   bindActionPanel(V,a); if(sel) bindCard(V,sel);
 }
+function pipsHtml(c){ return '<span class="pips">'+[0,1,2].map(i=>'<i class="ok'+((c.deathS||0)>i?' on':'')+'"></i>').join('')+'<em></em>'+[0,1,2].map(i=>'<i class="no'+((c.deathF||0)>i?' on':'')+'"></i>').join('')+'</span>'; }
 function ecoChips(c){
   if(!S.started) return '<span class="eco off">out of combat — free movement</span>';
   const e=eco(cById(c.id)), pip=(n,l)=>'<span class="eco'+(n>0?'':' used')+'">'+l+(n>1?' ×'+n:'')+'</span>';
-  return pip(e.action,'Action')+pip(e.bonus,'Bonus')+pip(e.reaction,'Reaction')+'<span class="eco'+(e.move>0?'':' used')+'">Move '+e.move+'/'+e.moveMax+' ft</span>'+(e.attacks>0?'<span class="eco">'+e.attacks+' attack'+(e.attacks>1?'s':'')+' left</span>':'')+(e.dodging?'<span class="eco fx">dodging</span>':'')+(e.disengaged?'<span class="eco fx">disengaged</span>':'');
+  return pip(e.action,'Action')+(e.haste>0?'<span class="eco fx" title="One weapon attack, Dash, Disengage, Hide or Use an Object">Haste action</span>':'')+pip(e.bonus,'Bonus')+pip(e.reaction,'Reaction')+'<span class="eco'+(e.move>0?'':' used')+'">Move '+e.move+'/'+e.moveMax+' ft</span>'+(e.attacks>0?'<span class="eco">'+e.attacks+' attack'+(e.attacks>1?'s':'')+' left</span>':'')+(e.dodging?'<span class="eco fx">dodging</span>':'')+(e.disengaged?'<span class="eco fx">disengaged</span>':'');
 }
 function timerHtml(){ if(!S.started||!S.settings.turnTimer) return ''; const left=Math.max(0,Math.ceil(S.settings.turnTimer-(Date.now()-S.turnStartedAt)/1000)); return '<span class="timer'+(left<=5?' low':'')+'" id="turn-timer">⏱ '+left+'s</span>'; }
 function actionPanel(V,a){
@@ -11273,9 +11543,18 @@ function actionPanel(V,a){
   const full=cById(a.id); if(!full) return '';
   const k=kit(full), cur=S.started&&current()&&current().id===a.id;
   let h='<div class="card ap"><div class="ap-head"><span class="ap-name">'+esc(a.name)+'</span>'+(S.started?(cur?'<span class="ap-turn">● on turn</span>':'<span class="ap-wait">not their turn</span>'):'')+timerHtml()+'</div>';
-  h+='<div class="eco-row">'+ecoChips(a)+'</div>';
+  if(lifeOf(full)==='alive') h+='<div class="eco-row">'+ecoChips(a)+'</div>';
   if(UI.pending) return h+pendingHtml(V,a)+'</div>';
-  if(incapacitated(full)&&full.hp<=0&&full.kind==='pc') h+='<div class="sub" style="margin:6px 0">At 0 HP — roll a death save from the card below.</div>';
+  const life=lifeOf(full);
+  if(life!=='alive'){
+    if(life==='dead') h+='<div class="death-box dead"><div class="db-ic">☠</div><div><b>'+esc(a.name)+' has died.</b><div class="sub">'+(full.kind==='pc'?'Revivify, Raise Dead and the like can bring them back. The DM can also heal them back from the card.':'The body stays on the map — remove it from its card if you like.')+'</div></div></div>';
+    else if(life==='stable') h+='<div class="death-box stable"><div class="db-ic">💤</div><div><b>'+esc(a.name)+' is stable.</b><div class="sub">Unconscious at 0 HP, but no longer dying. Any healing wakes them up; damage makes them start dying again.</div></div></div>';
+    else h+='<div class="death-box dying"><div class="db-ic">💀</div><div><b>'+esc(a.name)+' is dying.</b> '+pipsHtml(full)+'<div class="sub">Roll a d20 each turn: 10+ is a success, 3 successes = stable. Below 10 is a failure, 3 failures = dead. A natural 20 brings you back with 1 HP; a natural 1 counts as two failures. Damage at 0 HP is a failure (two on a crit).</div>'+
+      '<div class="row" style="margin-top:8px">'+(full.eco&&full.eco.deathRolled&&S.started&&cur?'<span class="sub">Rolled this turn — end your turn.</span>':'<button class="btn danger" id="ap-dsroll"'+dis({t:'deathRoll',cid:a.id})+'>🎲 Roll death save</button>')+'</div></div></div>';
+    if(S.started&&(cur||UI.viewAs==='dm')) h+='<div class="ap-sec end"><button class="btn primary" id="ap-end"'+dis({t:'endTurn',cid:a.id})+'>End Turn ⏎</button></div>';
+    return h+'</div>';
+  }
+  if(hasCond(full,'Prone')) h+='<div class="ap-sec"><span class="ap-lbl">Prone</span><button class="btn sm" id="ap-stand"'+dis({t:'stand',cid:a.id})+'>Stand up ('+Math.ceil(eco(full).moveMax/2)+' ft)</button><span class="ap-note">crawling costs double · melee attacks against you have advantage</span></div>';
   // attacks
   const atks=attacksOf(full);
   const spent=full.spent||{};
@@ -11287,7 +11566,9 @@ function actionPanel(V,a){
     (Object.keys(spent).length&&UI.viewAs==='dm'?'<button class="btn sm" id="ap-recharge" title="Recharge everything now">↻ Recharge</button>':'')+'</div>';
   // spells
   if(k&&k.spells.length){ const slotTxt=k.slots.map((n,i)=>n?'L'+(i+1)+' '+(n-(k.slotsUsed[i]||0))+'/'+n:'').filter(Boolean).join(' · ');
-    h+='<div class="ap-sec"><span class="ap-lbl">Spells</span><button class="btn'+(UI.spellOpen?' primary':'')+'" id="ap-spells">✨ Cast a spell…</button><span class="ap-note">DC '+k.dc+' · '+fm(k.atk)+' to hit'+(slotTxt?' · '+slotTxt:'')+'</span></div>';
+    const spr=k.klass==='Sorcerer'&&k.level>=3&&(k.resources||[]).find(r=>r.key==='sp'), spLeft=spr?spr.max-spr.used:0;
+    h+='<div class="ap-sec"><span class="ap-lbl">Spells</span><button class="btn'+(UI.spellOpen?' primary':'')+'" id="ap-spells">✨ Cast a spell…</button>'+(spr?'<button class="btn sm'+(UI.quick?' primary':'')+'" id="ap-quick"'+(spLeft<2?' disabled title="Needs 2 sorcery points"':' title="Quickened Spell: cast an action spell as a bonus action for 2 sorcery points"')+'>⚡ Quicken ('+spLeft+' SP)</button>':'')+'<span class="ap-note">DC '+k.dc+' · '+fm(k.atk)+' to hit'+(slotTxt?' · '+slotTxt:'')+'</span></div>';
+    if(!spr) UI.quick=false;
     if(UI.spellOpen) h+=spellList(a,k);
   }
   // standard actions
@@ -11295,13 +11576,19 @@ function actionPanel(V,a){
   h+='<div class="ap-sec"><span class="ap-lbl">Actions</span>'+std.map(([w,l])=>'<button class="btn sm" data-std="'+w+'"'+dis({t:'std',cid:a.id,which:w})+'>'+l+'</button>').join('')+'</div>';
   // bonus / features
   let fb='';
+  const fbtn=(key,label,tip,extra)=>'<button class="btn sm" data-feat="'+key+'" data-as="bonus"'+(extra||'')+dis({t:'feature',cid:a.id,key,as:'bonus'})+' title="'+esc(tip)+'">'+label+'</button>';
   if(k&&k.klass==='Rogue'&&k.level>=2) fb+=['dash','disengage','hide'].map(m=>'<button class="btn sm" data-feat="cunning" data-mode="'+m+'"'+dis({t:'feature',cid:a.id,key:'cunning',as:'bonus'})+'>Cunning: '+m+'</button>').join('');
+  if(k&&k.klass==='Rogue'&&k.subclass==='Thief'&&k.level>=3) fb+=fbtn('fastHands','Fast Hands',FEATURES.fastHands.tip);
+  if(k&&k.klass==='Rogue'&&k.level>=3) fb+=fbtn('steady','Steady Aim',FEATURES.steady.tip);
+  if(k&&k.klass==='Monk') fb+=fbtn('martial','Martial Arts strike',FEATURES.martial.tip);
+  if(k&&k.klass==='Barbarian'&&k.subclass==='Path of the Berserker'&&k.level>=3&&k.raging) fb+=fbtn('frenzy','Frenzy attack',FEATURES.frenzy.tip);
+  if(k&&k.klass==='Fighter'&&k.subclass==='Eldritch Knight'&&k.level>=7) fb+=fbtn('warMagic','War Magic attack',FEATURES.warMagic.tip);
   if(k) (k.resources||[]).forEach(r=>{
     const left=r.max<0?'∞':Math.max(0,r.max-r.used), none=r.max>=0&&r.max-r.used<=0;
     if(r.key==='sup'||r.key==='arcrec'||r.key==='natrec') return;
     if(r.key==='rage'){ fb+=k.raging?'<button class="btn sm" data-feat="rageEnd" data-as="free">End Rage</button>':'<button class="btn sm" data-feat="rage" data-as="bonus"'+(none?' disabled':dis({t:'feature',cid:a.id,key:'rage',as:'bonus'}))+'>🔥 Rage ('+left+')</button>'; return; }
     if(r.key==='ki'){ fb+=[['kiFlurry','Flurry of Blows'],['kiPatient','Patient Defense'],['kiStep','Step of the Wind']].map(([kk,l])=>'<button class="btn sm" data-feat="'+kk+'" data-as="bonus"'+(none?' disabled':dis({t:'feature',cid:a.id,key:kk,as:'bonus'}))+'>'+l+'</button>').join('')+'<span class="ap-note">Ki '+left+'</span>'; return; }
-    const F=FEATURES[r.key]; const as=F?F.as:'free';
+    const F=FEATURES[r.key]; const as=r.key==='ws'&&k.subclass==='Circle of the Moon'?'bonus':F?F.as:'free';
     fb+='<button class="btn sm" data-feat="'+r.key+'" data-as="'+as+'"'+(none?' disabled':dis({t:'feature',cid:a.id,key:r.key,as}))+' title="'+esc((F&&F.tip)||r.note||'')+'">'+esc(F?F.label:r.name)+' ('+left+')</button>';
   });
   if(fb) h+='<div class="ap-sec"><span class="ap-lbl">Features</span>'+fb+'</div>';
@@ -11317,8 +11604,8 @@ function spellList(a,k){
     h+='<div class="sp-lvl">'+(L===0?'Cantrips':'Level '+L)+'</div>';
     by[L].forEach(sp=>{ const m=spellMeta(sp);
       const slots=L===0?[0]:Array.from({length:maxL},(_,i)=>i+1).filter(x=>x>=L&&avail(x));
-      const castAs=m.cast==='bonus'?'bonus':m.cast==='reaction'?'reaction':'action';
-      const d=can({t:'cast',cid:a.id,spell:sp.name,as:castAs});
+      const quick=UI.quick&&m.cast==='action', castAs=quick?'bonus':m.cast==='bonus'?'bonus':m.cast==='reaction'?'reaction':'action';
+      const d=can({t:'cast',cid:a.id,spell:sp.name,as:castAs,slot:L===0?0:L,quick});
       h+='<div class="sp-row"><span class="sp-n">'+esc(sp.name)+(m.cast!=='action'?' <span class="sp-tag">'+m.cast+'</span>':'')+(m.conc?' <span class="sp-tag">conc</span>':'')+'</span><span class="sp-i" title="'+esc(sp.info)+'">'+esc(sp.info)+'</span>'+
         (slots.length?slots.map(x=>'<button class="btn sm" data-cast="'+esc(sp.name)+'" data-slot="'+x+'"'+(d?' disabled title="'+esc(d)+'"':'')+'>'+(x?'L'+x:'Cast')+'</button>').join(''):'<span class="ap-note">no slots</span>')+'</div>'; });
   });
@@ -11374,6 +11661,8 @@ function validTarget(t,ref){
 function toggleTarget(t){
   const P=UI.pending; if(!P) return; const ref=targetRef(t); if(!ref) return;
   if(P.kind==='cast'&&P.meta.area&&S.grid.on) return;
+  if(ref.c&&isDead(ref.c)&&!(P.kind==='cast'&&P.meta.revive)){ toast(ref.name+' is dead'); return; }
+  if(ref.c&&P.kind==='cast'&&P.meta.revive&&!isDead(ref.c)){ toast(ref.name+' isn’t dead'); return; }
   const why=validTarget(t,ref); if(why){ toast(why); if(S.settings.enforce&&UI.viewAs!=='dm') return; }
   const same=x=>(x.cid&&x.cid===t.cid)||(x.tile&&x.tile===t.tile);
   const i=P.targets.findIndex(same);
@@ -11387,10 +11676,10 @@ function confirmPending(){
   let it;
   if(P.kind==='attack') it={t:'attack',cid:P.cid,idx:P.idx,targets:P.targets,adv:P.adv,riders:P.riders,as:P.as||'action'};
   else if(P.kind==='cast'&&P.ability!=null) it={t:'ability',cid:P.cid,idx:P.ability,targets:P.targets,area:P.meta.area&&S.grid.on?UI.aim:null};
-  else if(P.kind==='cast') it={t:'cast',cid:P.cid,spell:P.spell,slot:P.slot,targets:P.targets,darts:P.meta.darts?P.darts:null,area:P.meta.area&&S.grid.on?UI.aim:null,adv:P.adv,as:P.meta.cast==='bonus'?'bonus':P.meta.cast==='reaction'?'reaction':'action'};
+  else if(P.kind==='cast') it={t:'cast',cid:P.cid,spell:P.spell,slot:P.slot,targets:P.targets,darts:P.meta.darts?P.darts:null,area:P.meta.area&&S.grid.on?UI.aim:null,adv:P.adv,quick:!!P.quick,as:P.quick||P.meta.cast==='bonus'?'bonus':P.meta.cast==='reaction'?'reaction':'action'};
   else if(P.kind==='feature') it={t:'feature',cid:P.cid,key:P.key,target:(P.targets[0]||{}).cid,amount:P.amount,as:P.as};
   else if(P.kind==='std') it={t:'std',cid:P.cid,which:P.which,target:(P.targets[0]||{}).cid};
-  const r=send(it); if(r.ok){ UI.pending=null; UI.aim=null; render(); }
+  const r=send(it); if(r.ok){ if(P.quick) UI.quick=false; UI.pending=null; UI.aim=null; render(); }
 }
 function bindActionPanel(V,a){
   if(!a) return; const full=cById(a.id);
@@ -11398,14 +11687,18 @@ function bindActionPanel(V,a){
   $$('[data-abil]').forEach(b=>b.onclick=()=>{ const m=abilitiesOf(full).find(x=>x.idx===+b.dataset.abil); if(m) startPending({kind:'cast',cid:a.id,ability:m.idx,spell:m.name,slot:0,meta:m}); });
   const rch=$('#ap-recharge'); if(rch) rch.onclick=()=>send({t:'recharge',cid:a.id});
   const sp=$('#ap-spells'); if(sp) sp.onclick=()=>{ UI.spellOpen=!UI.spellOpen; render(); };
+  const qk=$('#ap-quick'); if(qk) qk.onclick=()=>{ UI.quick=!UI.quick; UI.spellOpen=true; render(); };
+  const ds=$('#ap-dsroll'); if(ds) ds.onclick=()=>send({t:'deathRoll',cid:a.id});
+  const st=$('#ap-stand'); if(st) st.onclick=()=>send({t:'stand',cid:a.id});
   $$('[data-cast]').forEach(b=>b.onclick=()=>{
     const k=kit(full), s=k.spells.find(x=>x.name===b.dataset.cast), slot=+b.dataset.slot||0;
-    const meta=scaled(spellMeta(s),slot||s.lvl,k.level);
-    if(meta.self||(!meta.needsTarget&&!meta.area)){ send({t:'cast',cid:a.id,spell:s.name,slot,targets:[],as:meta.cast==='bonus'?'bonus':meta.cast==='reaction'?'reaction':'action'}); UI.spellOpen=false; render(); return; }
-    startPending({kind:'cast',cid:a.id,spell:s.name,slot,meta});
+    const meta=scaled(spellMeta(s),slot||s.lvl,k.level), quick=!!UI.quick&&meta.cast==='action';
+    if(meta.self||(!meta.needsTarget&&!meta.area)){ const r=send({t:'cast',cid:a.id,spell:s.name,slot,targets:[],quick,as:quick||meta.cast==='bonus'?'bonus':meta.cast==='reaction'?'reaction':'action'}); if(r.ok&&quick) UI.quick=false; UI.spellOpen=false; render(); return; }
+    startPending({kind:'cast',cid:a.id,spell:s.name,slot,meta,quick});
   });
   $$('[data-std]').forEach(b=>b.onclick=()=>{ const w=b.dataset.std; if(w==='help'){ startPending({kind:'std',cid:a.id,which:'help',label:'Help'}); return; } const txt=(w==='ready'||w==='object')?prompt(w==='ready'?'What are you readying?':'Which object?')||'':''; send({t:'std',cid:a.id,which:w,text:txt}); });
   $$('[data-feat]').forEach(b=>b.onclick=()=>{ const key=b.dataset.feat, as=b.dataset.as||'free';
+    if(key==='fastHands'){ const txt=prompt('Fast Hands — what do you do? (use an object, Sleight of Hand, thieves’ tools…)')||''; send({t:'feature',cid:a.id,key,as:'bonus',text:txt}); return; }
     if(key==='bi'||key==='loh'){ startPending({kind:'feature',cid:a.id,key,as:key==='loh'?'action':'bonus',label:key==='loh'?'Lay on Hands':'Bardic Inspiration',amount:5}); return; }
     send({t:'feature',cid:a.id,key,as:key==='cunning'?'bonus':as,mode:b.dataset.mode||(key==='kiStep'?'disengage':undefined)}); });
   const en=$('#ap-end'); if(en) en.onclick=()=>{ const r=send(UI.viewAs==='dm'&&!(current()&&current().id===a.id)?{t:'nextTurn'}:{t:'endTurn',cid:a.id}); if(r.ok){ UI.selected=null; render(); } };
@@ -11435,7 +11728,7 @@ function cardHtml(V,c,compact){
     '<div class="stat"><div class="k">Speed</div><div class="v">'+speedFt(full)+'</div></div><div class="stat"><div class="k">Passive</div><div class="v">'+(full.pp||10)+'</div></div></div>';
   if(dm||mine){
     h+='<h3>Damage &amp; healing</h3><div class="row"><input type="number" id="amt" value="5" style="width:70px;text-align:center"><button class="btn" id="do-dmg">− Damage</button><button class="btn" id="do-heal">+ Heal</button><button class="btn" id="do-temp">Temp HP</button></div>';
-    if(full.hp<=0&&full.kind==='pc') h+='<h3>Death saves</h3><div class="row">Successes '+[1,2,3].map(i=>'<button class="btn sm'+(full.deathS>=i?' primary':'')+'" data-ds="'+i+'">'+i+'</button>').join('')+' &nbsp; Failures '+[1,2,3].map(i=>'<button class="btn sm'+(full.deathF>=i?' danger':'')+'" data-df="'+i+'">'+i+'</button>').join('')+' <button class="btn sm" id="roll-death">Roll d20</button></div>';
+    if(full.hp<=0&&full.kind==='pc'&&(dm||lifeOf(full)==='dying')) h+='<h3>Death saves</h3><div class="row">Successes '+[1,2,3].map(i=>'<button class="btn sm'+(full.deathS>=i?' primary':'')+'" data-ds="'+i+'">'+i+'</button>').join('')+' &nbsp; Failures '+[1,2,3].map(i=>'<button class="btn sm'+(full.deathF>=i?' danger':'')+'" data-df="'+i+'">'+i+'</button>').join('')+(lifeOf(full)==='dying'?' <button class="btn sm" id="roll-death">Roll d20</button>':'')+'</div>';
     if(!S.grid.on) h+='<h3>Movement</h3><div class="row"><button class="btn sm" data-mv="-5">−5 ft</button><button class="btn sm" data-mv="5">+5 ft</button><span class="sub">'+(S.started?eco(full).move+' of '+eco(full).moveMax+' ft left':(full.moveUsed||0)+' ft moved')+'</span></div>';
     else if(dm&&!full.pos) h+='<div class="row" style="margin-top:8px"><button class="btn sm" id="place-tok">📍 Place on map</button><span class="sub">then click a square</span></div>';
     h+='<h3>Concentration</h3><div class="row"><input id="conc-spell" placeholder="Spell being concentrated on" value="'+esc(full.conc?full.conc.spell:'')+'" style="flex:1;min-width:120px"><button class="btn" id="conc-toggle">'+(full.conc?'Drop':'Start')+'</button></div>';
@@ -11501,7 +11794,7 @@ function fitView(){
   UI.view={z,x:(r.width-W*z)/2,y:Math.max(50,(r.height-H*z)/2),fitted:true}; applyView();
 }
 function gridToolbar(){
-  if(UI.viewAs!=='dm') return '<div class="gtools"><button class="btn sm" id="g-fit" title="Fit the map to the screen">⤢ Fit</button><span class="gt-note">click a square to move · right-drag = pan · wheel = zoom</span></div>';
+  if(UI.viewAs!=='dm') return '<div class="gtools"><button class="btn sm" id="g-fit" title="Fit the map to the screen">⤢ Fit</button><span class="gt-note">click a square or drag your token to move · right-drag = pan · wheel = zoom · Ctrl+Z = undo</span></div>';
   if(!UI.gridEdit){ const unplaced=S.combatants.filter(c=>!c.pos);
     return '<div class="gtools"><button class="btn sm" id="g-fit" title="Fit the map to the screen">⤢ Fit</button><button class="btn sm" id="g-edit">✏ Edit map</button>'+(unplaced.length?'<button class="btn sm" id="g-auto">📍 Place '+unplaced.length+' unplaced</button>':'')+'<button class="btn sm'+(S.settings.autoReveal?' primary':'')+'" id="g-reveal" title="Lift fog wherever the party can see">👁 Auto-reveal '+(S.settings.autoReveal?'on':'off')+'</button>'+
       '<select id="g-light" title="Ambient light: in dim light or darkness, creatures need a light source or darkvision to see">'+[['bright','☀ Bright'],['dim','🌗 Dim'],['dark','🌑 Dark']].map(([v,l])=>'<option value="'+v+'"'+((S.grid.light||'bright')===v?' selected':'')+'>'+l+'</option>').join('')+'</select>'+'<span class="gt-note">drag = DM move · right-drag = pan · wheel = zoom</span></div>'; }
@@ -11623,9 +11916,11 @@ function resolveLoadPrep(it){
 }
 
 // ---------------- editing ----------------
+let PREP_UNDO=null;
 function startPrepEdit(P){
   if(PREP){ toast('Finish the prep you’re editing first'); return; }
   PREP={id:P.id,name:P.name,notes:P.notes||'',createdAt:P.createdAt||Date.now(),stash:S,dirty:false};
+  PREP_UNDO={s:UNDO.stack,r:UNDO.redo}; undoClear();   // the live table's history waits while you edit the prep
   S=migrate(prepToState(P)); UI.viewAs='dm'; UI.selected=null; UI.pending=null; UI.gridEdit=true; UI.tool=Object.keys(S.grid.tiles).length||S.combatants.length?'select':'paint'; UI.view.fitted=false;
   closeModal(); save(); render();
   toast('Editing “'+P.name+'” — your live table is set aside until you close this');
@@ -11641,7 +11936,7 @@ function savePrep(){
 function closePrep(force){
   if(!PREP) return;
   if(!force&&PREP.dirty&&!confirm('Close without saving? Changes since the last save are lost.')) return;
-  S=PREP.stash; PREP=null; clearDraft(); UI.gridEdit=false; UI.tool='select'; UI.selected=null; UI.pending=null; UI.view.fitted=false;
+  S=PREP.stash; PREP=null; clearDraft(); if(PREP_UNDO){ UNDO.stack=PREP_UNDO.s; UNDO.redo=PREP_UNDO.r; PREP_UNDO=null; } else undoClear(); UI.gridEdit=false; UI.tool='select'; UI.selected=null; UI.pending=null; UI.view.fitted=false;
   save(); render();
 }
 function prepNotes(){
@@ -11695,7 +11990,7 @@ function runPrepDialog(P){
     '<div class="row" style="margin-top:12px;justify-content:flex-end"><button class="btn" id="rp-x">Cancel</button><button class="btn primary" id="rp-go">▶ Set it up</button></div>');
   $('#rp-x').onclick=closeModal;
   $('#rp-go').onclick=()=>{
-    const add=$('#rp-add')&&$('#rp-add').checked?missing.map(pc=>{ const c=mkFromPC(pc); const k=kit(Object.assign({},c)); if(k) c.attacksPerAction=pcAttacksPerAction(k); return c; }):[];
+    const add=$('#rp-add')&&$('#rp-add').checked?missing.map(pc=>{ const c=mkFromPC(pc); const k=kit(Object.assign({},c)); if(k) pcClassSync(c,k); return c; }):[];
     const r=send({t:'loadPrep',prep:clone(P),keepParty:$('#rp-keep').checked,addParty:add});
     if(r.ok){ closeModal(); UI.selected=null; UI.pending=null; UI.gridEdit=false; UI.view.fitted=false; render(); toast('“'+P.name+'” is on the table — roll initiative when ready'); }
   };
@@ -11872,7 +12167,7 @@ $('#btn-party').onclick=()=>{
     '<div class="row" style="margin-top:12px;justify-content:space-between"><button class="btn" id="pc-file">Import .json files instead…</button><button class="btn primary" id="pc-go">Add selected</button></div>');
   $('#pc-file').onclick=()=>{ closeModal(); fileMode='party'; $('#filein').click(); };
   $('#pc-go').onclick=()=>{ const ids=$$('.pc-pick:checked:not(:disabled)').map(i=>i.value); let n=0;
-    ids.forEach(id=>{ const pc=roster.find(x=>x.id===id); if(pc){ const c=mkFromPC(pc); const k=kit(Object.assign({},c)); if(k) c.attacksPerAction=pcAttacksPerAction(k); send({t:'add',combatant:c}); n++; } });
+    ids.forEach(id=>{ const pc=roster.find(x=>x.id===id); if(pc){ const c=mkFromPC(pc); const k=kit(Object.assign({},c)); if(k) pcClassSync(c,k); send({t:'add',combatant:c}); n++; } });
     closeModal(); toast(n?n+' added from the roster':'Nobody selected'); };
 };
 $('#filein').onchange=function(){
@@ -11990,6 +12285,8 @@ $('#btn-next').onclick=()=>{
   if(isDM()){ const r=send(S.started?{t:'nextTurn'}:{t:'startCombat'}); if(r.ok){ UI.selected=null; UI.pending=null; render(); } return; }
   const V=viewNow(), a=actorFor(V); if(!a) return; const r=send({t:'endTurn',cid:a.id}); if(r.ok){ UI.pending=null; render(); }
 };
+$('#btn-undo').onclick=()=>send({t:'undo'});
+$('#btn-redo').onclick=()=>send({t:'redo'});
 $('#btn-stop').onclick=()=>{ if(confirm('End combat? Initiative stays, turns stop.')) send({t:'stopCombat'}); };
 $('#view-as').onchange=e=>{ UI.viewAs=e.target.value; UI.pending=null; UI.selected=null; UI.gridEdit=false; UI.spellOpen=false; render(); toast(UI.viewAs==='dm'?'DM view':'Viewing as '+(seatOf(UI.viewAs)||{}).name+' — exactly what that player’s screen will show'); };
 $('#btn-grid').onclick=()=>{ send({t:'gridCfg',set:{on:!S.grid.on}}); if(S.grid.on&&S.combatants.some(c=>!c.pos)) toast('Use “📍 Place unplaced” to drop tokens on the map'); };
@@ -12043,12 +12340,13 @@ function openPlayers(){
 // ---------------- settings / encounter menu ----------------
 $('#btn-menu').onclick=()=>{
   if(!isDM()){ openModal('<h2>Table rules</h2><div class="sub">Set by the DM.</div><div class="mlist" style="padding:10px">'+
-    '<div>Legal moves only in combat: <b>'+(S.settings.enforce?'on':'off')+'</b></div><div>Turn timer: <b>'+(S.settings.turnTimer?S.settings.turnTimer+' s'+(S.settings.timerMode==='end'?' (auto end turn)':''):'off')+'</b></div></div>'); return; }
+    '<div>Legal moves only in combat: <b>'+(S.settings.enforce?'on':'off')+'</b></div><div>Undo: <b>'+({safe:'your own actions this turn, except dice rolls',all:'your own actions this turn',off:'DM only'}[S.settings.playerUndo||'safe'])+'</b></div><div>Turn timer: <b>'+(S.settings.turnTimer?S.settings.turnTimer+' s'+(S.settings.timerMode==='end'?' (auto end turn)':''):'off')+'</b></div></div>'); return; }
   const st=S.settings, pcs=S.combatants.filter(c=>teamOf(c)==='party').length;
   openModal('<h2>Encounter settings</h2><div class="sub">'+S.combatants.length+' combatants ('+pcs+' party side) · round '+S.round+'</div>'+
     H3('Rules')+
     '<label class="optrow"><input type="checkbox" id="s-enforce"'+(st.enforce?' checked':'')+'> <b>Enforce legal moves in combat</b><span class="sub"> — players can only act on their own turn, within their action, bonus action, reaction and movement. Outside combat they move freely. You (DM) can always do anything.</span></label>'+
     '<label class="optrow"><input type="checkbox" id="s-confirm"'+(st.confirmClaims?' checked':'')+'> Players need my OK to take control of a character</label>'+
+    '<div class="optrow">Players can undo <select id="s-undo">'+[['safe','their own moves and actions this turn — except ones that rolled dice'],['all','anything of their own this turn, dice included'],['off','nothing (only the DM undoes)']].map(([v,l])=>'<option value="'+v+'"'+((st.playerUndo||'safe')===v?' selected':'')+'>'+l+'</option>').join('')+'</select> <span class="sub">(you can always undo anything, across turns: ↶ / Ctrl+Z)</span></div>'+
     '<label class="optrow"><input type="checkbox" id="s-pinit"'+(st.playerInit?' checked':'')+'> Players roll their own initiative <span class="sub">(Roll Initiative skips characters a player controls; they roll or type their result)</span></label>'+
     '<label class="optrow"><input type="checkbox" id="s-mhp"'+(st.showMonsterHp?' checked':'')+'> Show exact HP of every creature to players <span class="sub">(normally they only see their own HP and AC; everyone else gets a health hint)</span></label>'+
     '<div class="optrow">Health hints by default: <select id="s-hmode"><option value="pct"'+(st.hint.mode==='pct'?' selected':'')+'>by % of max HP</option><option value="manual"'+(st.hint.mode==='manual'?' selected':'')+'>manual (I set them)</option><option value="hidden"'+(st.hint.mode==='hidden'?' selected':'')+'>show nothing</option></select>'+
@@ -12068,6 +12366,7 @@ $('#btn-menu').onclick=()=>{
   $('#s-confirm').onchange=e=>set({confirmClaims:e.target.checked});
   $('#s-mhp').onchange=e=>set({showMonsterHp:e.target.checked});
   $('#s-pinit').onchange=e=>set({playerInit:e.target.checked});
+  $('#s-undo').onchange=e=>set({playerUndo:e.target.value});
   $('#s-reveal').onchange=e=>{ set({autoReveal:e.target.checked}); if(e.target.checked&&!Object.keys(S.grid.fog||{}).length) toast('Tip: “Fog all” in ✏ Edit map, then the party’s sight clears it'); };
   $('#s-vision').onchange=e=>set({visionFt:Math.max(0,parseInt(e.target.value,10)||0)});
   $('#s-area').onchange=e=>set({areaRule:e.target.value});
@@ -12101,7 +12400,7 @@ function tick(){
   $$('.timer').forEach(el=>{ el.textContent='⏱ '+left+'s'; el.classList.toggle('low',left<=5); });
   if(left<=0&&!S.timerFired&&NET.mode!=='client'){
     S.timerFired=true; const c=current();
-    if(S.settings.timerMode==='end'){ log('⏱ Time’s up for '+esc(c?c.name:'?')+' — turn ends','dmg'); UI.pending=null; advanceTurn(); }
+    if(S.settings.timerMode==='end'){ undoPush({before:snap(),label:'the end of '+(c?c.name+'’s':'the')+' turn (timer)',actor:'dm',turn:S.turnSeq||0,dice:false}); log('⏱ Time’s up for '+esc(c?c.name:'?')+' — turn ends','dmg'); UI.pending=null; advanceTurn(); }
     else log('⏱ Time’s up for <b>'+esc(c?c.name:'?')+'</b>','dmg');
     commit();
   }
@@ -12113,6 +12412,8 @@ document.addEventListener('keydown',e=>{
   if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) return;
   if(e.key==='Escape'){ if($('#modal').classList.contains('open')) closeModal(); else if(UI.pending){ UI.pending=null; UI.aim=null; render(); } else if(UI.placing){ UI.placing=null; } return; }
   if($('#modal').classList.contains('open')) return;
+  if((e.ctrlKey||e.metaKey)&&(e.key==='z'||e.key==='Z')){ e.preventDefault(); send({t:e.shiftKey?'redo':'undo'}); return; }
+  if((e.ctrlKey||e.metaKey)&&(e.key==='y'||e.key==='Y')){ e.preventDefault(); send({t:'redo'}); return; }
   if(e.key===' '){ e.preventDefault(); if(!$('#btn-next').disabled) $('#btn-next').click(); }
   else if(e.key==='Enter'&&UI.pending){ e.preventDefault(); confirmPending(); }
   else if(e.key==='l'||e.key==='L'){ UI.logOpen=!UI.logOpen; syncLog(); }
@@ -12127,7 +12428,7 @@ window.__suiteEnc={
       const nv={hp:(pc.curHp==null?+pc.maxHp:+pc.curHp),maxHp:+pc.maxHp||1,tempHp:+pc.tempHp||0,ac:+pc.ac||10,deathS:+pc.deathS||0,deathF:+pc.deathF||0,name:pc.name||t.name};
       Object.keys(nv).forEach(k=>{ if(t[k]!==nv[k]) t[k]=nv[k]; });
       syncPcPortrait(t,pc.portrait||null);
-      const k=kit(t); if(k){ t.attacksPerAction=pcAttacksPerAction(k); t.level=k.level; } });
+      const k=kit(t); if(k) pcClassSync(t,k); });
     commit();   // slots / resources may have changed on the sheet too
   },
   load(o){ const r=Host.handle({t:'loadEnc',data:o},'dm'); if(!r.ok) toast(r.why); },

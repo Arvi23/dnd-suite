@@ -19,7 +19,23 @@ Under the hood each app runs in its own same-origin frame built from a `<templat
 
 ## ⚔ Encounter — combat at the table
 
-**Turns.** Each combatant gets an action, a bonus action, a reaction and their movement every turn, shown as chips at the top of the action bar. Extra Attack and monster Multiattack are counted, so the attack buttons stay live until all attacks are used. **Start Combat** begins round 1 and **Next Turn** (or Space) moves on. Players end their own turn with **End Turn**. **■ End** stops combat.
+**Turns.** Each combatant gets an action, a bonus action, a reaction and their movement every turn, shown as chips at the top of the action bar. Extra Attack and monster Multiattack are counted, so the attack buttons stay live until all attacks are used. **Start Combat** begins round 1 and **Next Turn** (or Space) moves on. Players end their own turn with **End Turn**. **■ End** stops combat. The top bar shows the round and whose turn it is, and players get a short "Your turn" flash.
+
+**↶ Undo / ↷ Redo** (top bar, or Ctrl+Z / Ctrl+Y).
+- **The DM** can step back through anything, across turns: a misclicked move, a wrong damage number, a turn ended too early, a map painting stroke. Spell slots and class resources spent on the sheet come back too.
+- **Players** can take back their own last action until they press End Turn. By default that excludes anything that rolled dice (so nobody re-rolls a miss); ⚙ → *Players can undo* switches that to *anything of their own this turn* or *nothing*. Once a player ends their turn, only the DM can undo it.
+- Every undo and redo is written to the log for everyone to see.
+
+**Class features that change the action economy** are on the action bar:
+- **Rogue:** Cunning Action (Dash, Disengage, Hide as a bonus action), Steady Aim. **Thief:** Fast Hands (Use an Object, Sleight of Hand or thieves' tools as a bonus action), and at 17th level **Thief's Reflexes**: a second turn in the first round of combat, at initiative − 10.
+- **Fighter:** Action Surge (once per turn), Extra Attack. **Eldritch Knight 7+:** War Magic, a bonus-action weapon attack after casting a cantrip.
+- **Monk:** Martial Arts (a bonus unarmed strike after the Attack action), Flurry of Blows, Patient Defense, Step of the Wind; Unarmored Movement adds to speed.
+- **Barbarian:** Rage, Fast Movement (+10 ft from 5th level). **Berserker:** Frenzy attack as a bonus action while raging.
+- **Cleric (War):** War Priest bonus-action attack. **Druid (Moon):** Wild Shape as a bonus action. **Gloom Stalker:** Dread Ambusher (+10 ft and an extra attack on your first turn).
+- **Sorcerer 3+:** ⚡ Quicken (2 sorcery points) casts an action spell as a bonus action.
+- **Haste** gives the extra limited action (one weapon attack, Dash, Disengage, Hide or Use an Object), double speed and +2 AC; **Slow** halves speed, removes reactions and gives −2 AC.
+- With legal moves on, the bonus-action spell rule is enforced: after a bonus-action spell, your action can only be a cantrip.
+- Class speed bonuses are added only when the sheet still shows the race's base speed, so a speed you typed in by hand is never counted twice.
 
 **Legal moves only (⚙ → Rules).** This is off by default.
 - When it is on, players can act only on their own turn and only with what they have left. Buttons they can't use are greyed out, and hovering one shows why.
@@ -45,8 +61,10 @@ Under the hood each app runs in its own same-origin frame built from a `<templat
   - **✏ Edit map** paints walls, wooden walls, wooden or iron doors, windows, difficult terrain, water, pits and fog. **Erase** makes any square passable again.
   - **⤢ Fit**, wheel to zoom, right-drag to pan.
 - Moving:
-  - Click a square to move. The green area shows how far you can go, and hovering shows the path and its cost.
-  - Difficult terrain costs double. Enemies block your path. Allies can be passed but you can't stop on them.
+  - Click a square or drag your token to move. The outlined green area shows how far you can go; hovering shows a ghost of your token where it would land, the path and its cost (amber or red when it's more than you have left).
+  - Large and bigger tokens are centred on the pointer, not hung off their top-left corner. Click inside your own big token to shuffle it a square.
+  - Difficult terrain costs double, and so does crawling while prone (**Stand up** costs half your speed). You can't slip diagonally between two walls that only touch at a corner.
+  - Enemies block your path, unless one of you is at least two sizes bigger than the other (halflings can also pass through anything bigger). Allies can be passed but you can't stop on them. The dead don't take up space.
   - Leaving an enemy's reach logs an opportunity-attack hint.
 - Doors and objects:
   - Click a door next to you to open or close it.
@@ -84,7 +102,13 @@ Under the hood each app runs in its own same-origin frame built from a `<templat
   - Seats and control carry over, and your notes go to the DM-only log.
 - **Edit, duplicate, rename, export and import**: each prep is its own `.prep.json`. **⋯ → Import a file** recognises it too. Suite backups include the whole library.
 
-**❤ Health hints.** Players see exact HP and AC only for what they control. Everyone else, other players' characters included, shows a hint: *Unhurt / Damaged / Heavily damaged / Critical condition / Down*.
+**💀 Dying and death.**
+- A character at 0 HP is **dying**: a pulsing red ring and a DYING tag on the map, death-save pips under the token and in the initiative list, and a red banner and death-save panel for its player. On their turn they roll one death save (or tick the pips by hand).
+- Three successes make them **stable** (no more saves; damage starts the dying again). Three failures, or massive damage, and they are **dead**: grey with a skull on the map, struck through in the initiative list. Monsters at 0 HP die outright.
+- The dead and the stable are skipped in the turn order. Healing doesn't work on the dead; Revivify, Raise Dead, Resurrection and the like do, and the DM can still heal anyone back by hand from their card.
+- Players get a short flash when their character goes down, dies or gets back up.
+
+**❤ Health hints.** Players see exact HP and AC only for what they control. Everyone else, other players' characters included, shows a hint: *Unhurt / Damaged / Heavily damaged / Critical condition*, then *Dying / Stable / Dead*.
 - **Table default (⚙):** by % of max HP (damaged below 100%, heavily damaged below 50%, critical below 25%), manual, or show nothing.
 - **Per creature (its card → *What players see*):**
   - **% thresholds** or **HP thresholds**, e.g. a boss that looks "Damaged" below 150 HP;
